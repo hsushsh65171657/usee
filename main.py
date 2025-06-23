@@ -1,4 +1,3 @@
-
 import os
 from telethon.sync import TelegramClient
 from telethon.tl.types import MessageEntityCustomEmoji
@@ -56,6 +55,14 @@ async def info(event):
     
   from telethon.tl.types import MessageEntityCustomEmoji
 
+@client.on(events.NewMessage(pattern=r"\.ping"))
+async def ping_handler(event):
+    start = time.time()
+    await event.edit("🏓 Pinging...")
+    end = time.time()
+    ping_time = int((end - start) * 1000)
+    await event.edit(f"🏓 Ping: {ping_time} ms")
+# ✅ .امسحلي يحذف رسائل المستخدم نفسه
 @client.on(events.NewMessage(pattern=r"\.idd"))
 async def handler(event):
     me = await client.get_me()
@@ -78,15 +85,7 @@ async def handler(event):
                 await event.reply(response)
                 return
 
-    await event.reply("This Emoji Is Not Premium")  
-@client.on(events.NewMessage(pattern=r"\.ping"))
-async def ping_handler(event):
-    start = time.time()
-    await event.edit("🏓 Pinging...")
-    end = time.time()
-    ping_time = int((end - start) * 1000)
-    await event.edit(f"🏓 Ping: {ping_time} ms")
-# ✅ .امسحلي يحذف رسائل المستخدم نفسه
+    await event.reply("This Emoji Is Not Premium")
 @client.on(events.NewMessage(pattern=r"\.امسحلي"))
 async def delete_my_messages(event):
     count = 0
