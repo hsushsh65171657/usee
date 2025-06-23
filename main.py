@@ -20,10 +20,28 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 
 client = TelegramClient(StringSession(string), api_id, api_hash)
 
-@client.on(events.NewMessage(pattern="/ping"))
-async def handler(event):
-    await event.reply("🏓 Bot is alive!")
+@client.on(events.NewMessage(pattern=r"\.ping"))
+async def ping_handler(event):
+    start = time.time()
+    await asyncio.sleep(0)
+    end = time.time()
+    ping_time = int((end - start) * 1000)
+    await client.send_message(event.chat_id, f"🏓 Ping: {ping_time}ms")
 
+# ✅ .امسحلي يحذف رسائل المستخدم نفسه
+@client.on(events.NewMessage(pattern=r"\.امسحلي"))
+async def delete_my_messages(event):
+    count = 0
+    async for message in client.iter_messages(event.chat_id):
+        if message.sender_id == event.sender_id:
+            try:
+                await message.delete()
+                count += 1
+            except:
+                continue
+    await client.send_message(event.chat_id, f"✅ تم حذف {count} رسالة\nBy: @S5llll")
+
+# ✅ تشغيل البوت
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
