@@ -54,7 +54,7 @@ async def nr(event):
     end_time = time.time()
     ping = round((end_time - start_time) * 50, 2)
     r1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    await event.edit(f"sourse work Successfully [👁](emoji/5263006706375342926)\nPinG : {ping} ms [👁️](emoji/5474508767389303120)\nTiMe : {r1} [😈](emoji/5474475837875044294)\n  — — — — — — \n DeV : @dohavoice [🦇](emoji/5443009168002788185)")
+    await event.edit(f"- Source Work Successfully [🇮🇶](emoji/5228888890630224685)\n- Ping: {ping} ms [😌](emoji/5769239009607815382)\n- Time: {r1} [📆](emoji/5431897022456145283)")
 
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
