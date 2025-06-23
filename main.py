@@ -46,7 +46,13 @@ async def nr(event):
     ping = round((end_time - start_time) * 50, 2)
     r1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     await event.edit(f"sourse work Successfully [👁](emoji/5263006706375342926)\nPinG : {ping} ms [👁️](emoji/5474508767389303120)\nTiMe : {r1} [😈](emoji/5474475837875044294)\n  — — — — — — \n DeV : @dohavoice [🦇](emoji/5443009168002788185)")
-
+@client.on(events.NewMessage(pattern='/info'))
+async def info(event):
+    ram_usage = psutil.virtual_memory().percent
+    cpu_usage = psutil.cpu_percent()
+    response = f"info server : [🌟](emoji/5787418193127542105)\nRam : {ram_usage}% [🔥](emoji/5354863081740580440)\nCPU {cpu_usage}%[🔥](emoji/5345941618623005800)"
+    await event.edit(response)
+    
 @client.on(events.NewMessage(pattern=r"\.ping"))
 async def ping_handler(event):
     start = time.time()
