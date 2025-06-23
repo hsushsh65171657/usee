@@ -1,6 +1,7 @@
 
 import os
 from telethon.sync import TelegramClient
+from telethon.tl.types import MessageEntityCustomEmoji
 from telethon.sessions import StringSession
 from telethon import events
 import asyncio
