@@ -47,7 +47,7 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
 # ✅ أمر .فحص لقياس البنك
-@client.on(events.NewMessage(outgoing=True, pattern=".فحص"))
+@client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
     start_time = time.time()
     await asyncio.sleep(1)
@@ -64,41 +64,8 @@ async def info(event):
     response = f"info server : [🌟](emoji/5787418193127542105)\nRam : {ram_usage}% [🔥](emoji/5354863081740580440)\nCPU {cpu_usage}%[🔥](emoji/5345941618623005800)"
     await event.edit(response)
 
-# ✅ أمر .idd للحصول على ID الملصق المميز
-@client.on(events.NewMessage(pattern=r"\.idd"))
-async def handler(event):
-    me = await client.get_me()
-    if event.sender_id != me.id:
-        return
 
-    message = event.message
-    if event.message.reply_to_msg_id:
-        reply_message = await event.get_reply_message()
-        if reply_message:
-            message = reply_message
-
-    if message.entities:
-        for entity in message.entities:
-            if isinstance(entity, MessageEntityCustomEmoji):
-                emoji_id = int(entity.document_id)
-                emoji_text = message.text[entity.offset:entity.offset + entity.length].replace('[', '')
-                response = f"Your Emoji [{emoji_text}](tg://emoji?id={emoji_id}) Document Id Is `{emoji_id}`"
-                await event.reply(response)
-                return
-
-    await event.reply("This Emoji Is Not Premium")
-
-# ✅ أمر .ping يظهر البنك بدون رد
-@client.on(events.NewMessage(pattern=r"\.ping"))
-async def ping_handler(event):
-    start = time.time()
-    await event.edit("🏓 Pinging...")
-    end = time.time()
-    ping_time = int((end - start) * 1000)
-    await event.edit(f"🏓 Ping: {ping_time} ms")
-
-# ✅ أمر .امسحلي لحذف رسائل المستخدم
-@client.on(events.NewMessage(pattern=r"\.امسحلي"))
+@client.on(events.NewMessage(pattern=r"\.delm"))
 async def delete_my_messages(event):
     count = 0
     async for message in client.iter_messages(event.chat_id):
@@ -108,7 +75,7 @@ async def delete_my_messages(event):
                 count += 1
             except:
                 continue
-    await client.send_message(event.chat_id, f"✅ تم حذف {count} رسالة\nBy: @S5llll")
+    await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 # ✅ تشغيل البوت
 client.start()
