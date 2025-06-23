@@ -20,14 +20,22 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 
 client = TelegramClient(StringSession(string), api_id, api_hash)
 
+@client.on(events.NewMessage(outgoing=True, pattern=".فحص"))
+async def nr(event):
+    start_time = time.time()
+    await asyncio.sleep(1)
+    end_time = time.time()
+    ping = round((end_time - start_time) * 50, 2)
+    r1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await event.edit(f"sourse work Successfully [👁](emoji/5263006706375342926)\nPinG : {ping} ms [👁️](emoji/5474508767389303120)\nTiMe : {r1} [😈](emoji/5474475837875044294)\n  — — — — — — \n DeV : @dohavoice [🦇](emoji/5443009168002788185)")
+
 @client.on(events.NewMessage(pattern=r"\.ping"))
 async def ping_handler(event):
     start = time.time()
-    await asyncio.sleep(0)
+    await event.edit("🏓 Pinging...")
     end = time.time()
     ping_time = int((end - start) * 1000)
-    await client.send_message(event.chat_id, f"🏓 Ping: {ping_time}ms")
-
+    await event.edit(f"🏓 Ping: {ping_time} ms")
 # ✅ .امسحلي يحذف رسائل المستخدم نفسه
 @client.on(events.NewMessage(pattern=r"\.امسحلي"))
 async def delete_my_messages(event):
