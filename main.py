@@ -53,6 +53,31 @@ async def info(event):
     response = f"info server : [🌟](emoji/5787418193127542105)\nRam : {ram_usage}% [🔥](emoji/5354863081740580440)\nCPU {cpu_usage}%[🔥](emoji/5345941618623005800)"
     await event.edit(response)
     
+  from telethon.tl.types import MessageEntityCustomEmoji
+
+@client.on(events.NewMessage(pattern=r"\.idd"))
+async def handler(event):
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+
+    message = event.message
+    # إذا رد على رسالة خذها
+    if event.message.reply_to_msg_id:
+        reply_message = await event.get_reply_message()
+        if reply_message:
+            message = reply_message
+
+    if message.entities:
+        for entity in message.entities:
+            if isinstance(entity, MessageEntityCustomEmoji):
+                emoji_id = int(entity.document_id)
+                emoji_text = message.text[entity.offset:entity.offset + entity.length].replace('[', '')
+                response = f"Your Emoji [{emoji_text}](tg://emoji?id={emoji_id}) Document Id Is `{emoji_id}`"
+                await event.reply(response)
+                return
+
+    await event.reply("This Emoji Is Not Premium")  
 @client.on(events.NewMessage(pattern=r"\.ping"))
 async def ping_handler(event):
     start = time.time()
