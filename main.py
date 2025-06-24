@@ -95,22 +95,22 @@ async def delete_my_messages(event):
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
 genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN, skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"])
 
-@client.on(events.NewMessage(pattern=r"\.كلمات (.+)"))
+@client.on(events.NewMessage(pattern=r"\.lyrics (.+)"))
 async def lyrics_handler(event):
     song_name = event.pattern_match.group(1)
-    await event.reply("🔍 جاري البحث عن كلمات الأغنية...")
+    await event.edit("🔍 Loading, searching for the lyrics...")
 
     try:
         song = genius.search_song(song_name)
         if song and song.lyrics:
             lyrics = song.lyrics
             if len(lyrics) > 4096:
-                lyrics = lyrics[:4090] + "\n...\n(تم قطع الكلمات لأنها طويلة جدًا)"
-            await event.respond(f"🎵 كلمات الأغنية ({song.title}):\n\n{lyrics}")
+                lyrics = lyrics[:4090] + "\n...\n(lyrics too long, truncated)"
+            await event.edit(f"🎵 Lyrics for: {song.title}\n\n{lyrics}")
         else:
-            await event.reply("❌ لم أتمكن من العثور على كلمات الأغنية.")
+            await event.edit("❌ Could not find the lyrics for this song.")
     except Exception as e:
-        await event.reply(f"❌ حدث خطأ أثناء جلب الكلمات:\n{str(e)}")
+        await event.edit(f"❌ An error occurred while fetching lyrics:\n{str(e)}")
 #تحميل يوتيوب
 @client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
