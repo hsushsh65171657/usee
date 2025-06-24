@@ -1,4 +1,6 @@
 import os
+import yt_dlp
+from youtubesearchpython import VideosSearch
 import asyncio
 import re
 import random
@@ -56,7 +58,7 @@ async def nr(event):
 
     # ضبط التوقيت على العراق
     iraq_timezone = pytz.timezone("Asia/Baghdad")
-    current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %I:%M:%S %p")
+    current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
     await event.edit(
         f"- Source Work Successfully [🇮🇶](emoji/5228888890630224685)\n"
@@ -88,7 +90,49 @@ async def delete_my_messages(event):
                 continue
 
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
+#تحميل يوتيوب
+@client.on(events.NewMessage(pattern=r"\.يوتيوب (.+)"))
+async def youtube_audio_downloader(event):
+    query = event.pattern_match.group(1)
+    msg = await event.reply("🔍 جاري البحث أو التحميل...")
 
+    # إذا مو رابط، ابحث
+    if not query.startswith("http"):
+        try:
+            results = VideosSearch(query, limit=1).result()
+            video = results['result'][0]
+            url = video['link']
+            title = video['title']
+            await msg.edit(f"🔎 تم العثور على:\n`{title}`\n📥 جاري تحميل الصوت...")
+        except Exception as e:
+            await msg.edit(f"❌ فشل البحث:\n`{str(e)}`")
+            return
+    else:
+        url = query
+        title = "الصوت من الرابط"
+
+    # تحميل الصوت
+    try:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': 'audio.%(ext)s',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'quiet': True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info).replace(".webm", ".mp3").replace(".m4a", ".mp3")
+
+        await client.send_file(event.chat_id, filename, caption=f"🎧 {info['title']}")
+        await msg.delete()
+
+    except Exception as e:
+        await msg.edit(f"❌ فشل تحميل الصوت:\n`{str(e)}`")
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
