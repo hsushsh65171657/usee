@@ -97,7 +97,7 @@ async def youtube_audio(event):
 
     ydl_opts = {
         'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': 'HRBY (@s5llll).%(ext)s',
+        'outtmpl': 'HRBY(@s5llll).%(ext)s',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
@@ -108,24 +108,35 @@ async def youtube_audio(event):
             info = ydl.extract_info(query, download=True)
             if 'entries' in info:
                 info = info['entries'][0]
-                        filename = ydl.prepare_filename(info)
+            filename = ydl.prepare_filename(info)
 
-        # نجيب اسم أو يوزر الشخص
+        # معرفة منو طلب التحميل
         sender = await event.get_sender()
         username = f"@{sender.username}" if sender.username else sender.first_name
 
-        # نرسل الملف ويكون الكابشن مرتب
+        # نص الكابشن
         caption = f"✅ تم التحميل بنجاح\n🎵 اسم الأغنية: {info['title']}\n👤 بواسطة: {username}"
+
+        # إرسال الملف
         await client.send_file(
             event.chat_id,
             filename,
             caption=caption,
             voice_note=False
+        )
 
         await msg.delete()
 
+        # حذف الملف من السيرفر
+        if os.path.exists(filename):
+            os.remove(filename)
+
     except Exception as e:
-        await msg.edit(f"❌ فشل:\n`{str(e)}`")
+        await msg.edit(
+            f"❌ فشل في التحميل\n\n"
+            f"📌 السبب المحتمل: صيغة غير مدعومة أو خلل بالاتصال\n"
+            f"🧩 التفاصيل:\n`{str(e)}`"
+        )
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
