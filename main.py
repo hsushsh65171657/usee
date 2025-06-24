@@ -93,20 +93,15 @@ async def delete_my_messages(event):
 @client.on(events.NewMessage(pattern=r"\.يوتيوب (.+)"))
 async def youtube_audio(event):
     query = event.pattern_match.group(1)
-    msg = await event.reply("🔎 جاري البحث أو التحميل...")
+    msg = await event.reply("🔍 جاري التحميل...")
 
-    # إعدادات yt_dlp للبحث والتحميل
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'audio.%(ext)s',
         'noplaylist': True,
         'quiet': True,
-        'default_search': 'ytsearch1',  # هذا يخلي yt_dlp يبحث إذا مو رابط
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
+        'default_search': 'ytsearch1',
+        # نحذف postprocessors لتجنب ffmpeg
     }
 
     try:
@@ -114,7 +109,7 @@ async def youtube_audio(event):
             info = ydl.extract_info(query, download=True)
             if 'entries' in info:
                 info = info['entries'][0]
-            filename = ydl.prepare_filename(info).replace(".webm", ".mp3").replace(".m4a", ".mp3")
+            filename = ydl.prepare_filename(info)
 
         await client.send_file(event.chat_id, filename, caption=f"🎵 {info['title']}")
         await msg.delete()
