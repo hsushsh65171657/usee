@@ -15,7 +15,7 @@ from telethon.extensions import markdown
 from telethon import types
 from telethon.tl.types import MessageEntityCustomEmoji
 
-# ✅ كلاس خاص للماركداون
+#  كلاس خاص للماركداون
 class CustomMarkdown:
     @staticmethod
     def parse(text):
