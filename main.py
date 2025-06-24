@@ -98,7 +98,7 @@ genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN, skip_non_songs=True, excluded_
 @client.on(events.NewMessage(pattern=r"\.lyrics (.+)"))
 async def lyrics_handler(event):
     song_name = event.pattern_match.group(1)
-    await event.edit("🔍 Loading, searching for the lyrics...")
+    await event.edit("- Loading, searching for the lyrics...")
 
     try:
         song = genius.search_song(song_name)
@@ -106,11 +106,11 @@ async def lyrics_handler(event):
             lyrics = song.lyrics
             if len(lyrics) > 4096:
                 lyrics = lyrics[:4090] + "\n...\n(lyrics too long, truncated)"
-            await event.edit(f"🎵 Lyrics for: {song.title}\n\n{lyrics}")
+            await event.edit(f"- Lyrics for: {song.title}\n\n{lyrics}")
         else:
-            await event.edit("❌ Could not find the lyrics for this song.")
+            await event.edit("- Could not find the lyrics for this song.")
     except Exception as e:
-        await event.edit(f"❌ An error occurred while fetching lyrics:\n{str(e)}")
+        await event.edit(f"- Erorr:\n{str(e)}")
 #تحميل يوتيوب
 @client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
