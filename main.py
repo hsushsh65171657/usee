@@ -68,16 +68,20 @@ async def info(event):
 @client.on(events.NewMessage(pattern=r"\.delm"))
 async def delete_my_messages(event):
     count = 0
-    async for message in client.iter_messages(event.chat_id):
-        if message.sender_id == event.sender_id:
+    try:
+        async for message in client.iter_messages(event.chat_id, from_user='me'):
             try:
                 await message.delete()
                 count += 1
+                await asyncio.sleep(0.3)  # تأخير بسيط يمنع الباند المؤقت
             except:
                 continue
-    await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
+    except Exception as e:
+        await event.reply(f"❌ حدث خطأ أثناء الحذف:\n{str(e)}")
+        return
 
-# ✅ تشغيل البوت
+    await client.send_message(event.chat_id, f"✅ تم حذف {count} رسالة\nBy: @S5llll")
+
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
