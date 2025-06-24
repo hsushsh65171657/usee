@@ -2,3 +2,4 @@ telethon
 psutil
 pytz
 yt-dlp
+youtube-search-python
