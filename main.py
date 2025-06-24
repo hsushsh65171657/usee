@@ -68,17 +68,16 @@ async def info(event):
 @client.on(events.NewMessage(pattern=r"\.delm"))
 async def delete_my_messages(event):
     count = 0
-    try:
-        async for message in client.iter_messages(event.chat_id, from_user='me'):
+    me = await client.get_me()
+
+    async for message in client.iter_messages(event.chat_id):
+        if message.sender_id == me.id:  # تأكد إن الرسالة من حسابك
             try:
                 await message.delete()
                 count += 1
-                await asyncio.sleep(0.3)  # تأخير بسيط يمنع الباند المؤقت
+                await asyncio.sleep(0.3)  # تأخير بسيط للحماية
             except:
                 continue
-    except Exception as e:
-        await event.reply(f"❌ حدث خطأ أثناء الحذف:\n{str(e)}")
-        return
 
     await client.send_message(event.chat_id, f"✅ تم حذف {count} رسالة\nBy: @S5llll")
 
