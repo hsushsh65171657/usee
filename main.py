@@ -1,4 +1,5 @@
 import os
+import lyricsgenius
 import yt_dlp
 import asyncio
 import re
@@ -89,6 +90,27 @@ async def delete_my_messages(event):
                 continue
 
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
+#جلب كلمات الاغاني
+
+GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
+genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN, skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"])
+
+@client.on(events.NewMessage(pattern=r"\.كلمات (.+)"))
+async def lyrics_handler(event):
+    song_name = event.pattern_match.group(1)
+    await event.reply("🔍 جاري البحث عن كلمات الأغنية...")
+
+    try:
+        song = genius.search_song(song_name)
+        if song and song.lyrics:
+            lyrics = song.lyrics
+            if len(lyrics) > 4096:
+                lyrics = lyrics[:4090] + "\n...\n(تم قطع الكلمات لأنها طويلة جدًا)"
+            await event.respond(f"🎵 كلمات الأغنية ({song.title}):\n\n{lyrics}")
+        else:
+            await event.reply("❌ لم أتمكن من العثور على كلمات الأغنية.")
+    except Exception as e:
+        await event.reply(f"❌ حدث خطأ أثناء جلب الكلمات:\n{str(e)}")
 #تحميل يوتيوب
 @client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
@@ -135,6 +157,7 @@ async def youtube_audio(event):
         await msg.edit(
             f"🧩 Erorr:\n`{str(e)}`"
         )
+    
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
