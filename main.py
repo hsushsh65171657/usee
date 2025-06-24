@@ -1,6 +1,5 @@
 import os
 import yt_dlp
-from youtubesearchpython import VideosSearch
 import asyncio
 import re
 import random
