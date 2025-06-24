@@ -66,6 +66,54 @@ async def nr(event):
         f"- Time: {current_time} [📆](emoji/5431897022456145283)"
     )
 
+#امر فلتر الرسائل
+# قائمة الفلاتر: نستخدم dict لتخزينها حسب معرف الكروب
+filters_by_chat = {}
+
+# ✅ أمر .filter لإضافة كلمة
+@client.on(events.NewMessage(pattern=r"\.filter(?:\s+(.+))?"))
+async def add_filter(event):
+    word = event.pattern_match.group(1)
+    chat_id = event.chat_id
+
+    if chat_id not in filters_by_chat:
+        filters_by_chat[chat_id] = set()
+
+    if word:
+        filters_by_chat[chat_id].add(word.lower())
+        await event.reply(f"✅ Added `{word}` to filter list for this chat.")
+    else:
+        words = filters_by_chat.get(chat_id, set())
+        if not words:
+            await event.reply("📭 No filtered words in this chat.")
+        else:
+            listed = "\n".join(f"- {w}" for w in words)
+            await event.reply(f"🧾 Filtered words in this chat:\n{listed}")
+
+# ✅ أمر .unfilter لحذف كلمة من الفلاتر
+@client.on(events.NewMessage(pattern=r"\.unfilter\s+(.+)"))
+async def remove_filter(event):
+    word = event.pattern_match.group(1).lower()
+    chat_id = event.chat_id
+
+    if chat_id in filters_by_chat and word in filters_by_chat[chat_id]:
+        filters_by_chat[chat_id].remove(word)
+        await event.reply(f"🗑️ Removed `{word}` from filter list.")
+    else:
+        await event.reply("⚠️ This word is not in the filter list.")
+
+# ✅ هذا الحدث يمسح الرسائل تلقائيًا إن كانت مفلترة (حسب الكروب)
+@client.on(events.NewMessage())
+async def auto_delete(event):
+    chat_id = event.chat_id
+    if event.text and chat_id in filters_by_chat:
+        for word in filters_by_chat[chat_id]:
+            if word in event.text.lower():
+                try:
+                    await event.delete()
+                    break
+                except:
+                    pass
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
 async def info(event):
