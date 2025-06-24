@@ -1,3 +1,4 @@
 telethon
 psutil
 pytz
+yt-dlp
