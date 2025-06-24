@@ -2,5 +2,3 @@ telethon
 psutil
 pytz
 yt-dlp
-youtube-search-python
-requests==2.31.0
