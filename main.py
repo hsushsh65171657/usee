@@ -115,7 +115,7 @@ async def youtube_audio(event):
         username = f"@{sender.username}" if sender.username else sender.first_name
 
         # نص الكابشن
-        caption = f"Downloaded successfully ✅\n🔴 Song name: {info['title']\n🎖️By: {username}"
+        caption = f"Downloaded successfully ✅\n🔴 Song name: {info['title']}\n🎖️By: {username}"
 
         # إرسال الملف
         await client.send_file(
