@@ -6,7 +6,7 @@ import time
 import datetime
 import subprocess
 import psutil
-
+import pytz
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon import events
@@ -53,8 +53,16 @@ async def nr(event):
     await asyncio.sleep(1)
     end_time = time.time()
     ping = round((end_time - start_time) * 50, 2)
-    r1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    await event.edit(f"- Source Work Successfully [🇮🇶](emoji/5228888890630224685)\n- Ping: {ping} ms [😌](emoji/5769239009607815382)\n- Time: {r1} [📆](emoji/5431897022456145283)")
+
+    # ضبط التوقيت على العراق
+    iraq_timezone = pytz.timezone("Asia/Baghdad")
+    current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %H:%M:%S")
+
+    await event.edit(
+        f"- Source Work Successfully [🇮🇶](emoji/5228888890630224685)\n"
+        f"- Ping: {ping} ms [😌](emoji/5769239009607815382)\n"
+        f"- Time: {current_time} [📆](emoji/5431897022456145283)"
+    )
 
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
@@ -65,7 +73,7 @@ async def info(event):
     await event.edit(response)
 
 
-@client.on(events.NewMessage(pattern=r"\.delm"))
+@client.on(events.NewMessage(pattern=r"\.delall"))
 async def delete_my_messages(event):
     count = 0
     me = await client.get_me()
@@ -79,7 +87,7 @@ async def delete_my_messages(event):
             except:
                 continue
 
-    await client.send_message(event.chat_id, f"✅ تم حذف {count} رسالة\nBy: @S5llll")
+    await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 client.start()
 print("⚡ Bot is running...")
