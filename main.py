@@ -90,10 +90,10 @@ async def delete_my_messages(event):
 
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 #تحميل يوتيوب
-@client.on(events.NewMessage(pattern=r"\.يوتيوب (.+)"))
+@client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
     query = event.pattern_match.group(1)
-    msg = await event.reply("🔍 جاري التحميل...")
+    msg = await event.edit("- Loading …")
 
     ydl_opts = {
         'format': 'bestaudio[ext=m4a]/bestaudio/best',
@@ -115,7 +115,7 @@ async def youtube_audio(event):
         username = f"@{sender.username}" if sender.username else sender.first_name
 
         # نص الكابشن
-        caption = f"✅ تم التحميل بنجاح\n🎵 اسم الأغنية: {info['title']}\n👤 بواسطة: {username}"
+        caption = f"Downloaded successfully ✅\n🔴 Song name: {info['title']\n🎖️By: {username}"
 
         # إرسال الملف
         await client.send_file(
@@ -133,9 +133,7 @@ async def youtube_audio(event):
 
     except Exception as e:
         await msg.edit(
-            f"❌ فشل في التحميل\n\n"
-            f"📌 السبب المحتمل: صيغة غير مدعومة أو خلل بالاتصال\n"
-            f"🧩 التفاصيل:\n`{str(e)}`"
+            f"🧩 Erorr:\n`{str(e)}`"
         )
 client.start()
 print("⚡ Bot is running...")
