@@ -97,7 +97,7 @@ async def youtube_audio(event):
 
     ydl_opts = {
         'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': 'audio.%(ext)s',
+        'outtmpl': 'HRBY (@s5llll).%(ext)s',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
@@ -108,9 +108,20 @@ async def youtube_audio(event):
             info = ydl.extract_info(query, download=True)
             if 'entries' in info:
                 info = info['entries'][0]
-            filename = ydl.prepare_filename(info)
+                        filename = ydl.prepare_filename(info)
 
-        await client.send_file(event.chat_id, filename, caption=f"🎵 {info['title']}")
+        # نجيب اسم أو يوزر الشخص
+        sender = await event.get_sender()
+        username = f"@{sender.username}" if sender.username else sender.first_name
+
+        # نرسل الملف ويكون الكابشن مرتب
+        caption = f"✅ تم التحميل بنجاح\n🎵 اسم الأغنية: {info['title']}\n👤 بواسطة: {username}"
+        await client.send_file(
+            event.chat_id,
+            filename,
+            caption=caption,
+            voice_note=False
+
         await msg.delete()
 
     except Exception as e:
