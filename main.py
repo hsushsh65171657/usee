@@ -56,7 +56,7 @@ async def nr(event):
 
     # ضبط التوقيت على العراق
     iraq_timezone = pytz.timezone("Asia/Baghdad")
-    current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %I:%M:%S %p")
 
     await event.edit(
         f"- Source Work Successfully [🇮🇶](emoji/5228888890630224685)\n"
