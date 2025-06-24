@@ -96,12 +96,11 @@ async def youtube_audio(event):
     msg = await event.reply("🔍 جاري التحميل...")
 
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'outtmpl': 'audio.%(ext)s',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
-        # نحذف postprocessors لتجنب ffmpeg
     }
 
     try:
