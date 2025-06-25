@@ -127,17 +127,22 @@ async def remove_filter(event):
         await event.reply("⚠️ This word is not in the filter list.")
 
 # ✅ هذا الحدث يمسح الرسائل تلقائيًا إن كانت مفلترة (حسب الكروب)
-@client.on(events.NewMessage())
+
+@client.on(events.NewMessage(incoming=True, outgoing=True))
 async def auto_delete(event):
     chat_id = event.chat_id
-    if event.text and chat_id in filters_by_chat:
+    text = event.text or ""
+    if chat_id in filters_by_chat:
         for word in filters_by_chat[chat_id]:
-            if word in event.text.lower():
+            # تحقق من وجود الكلمة ككلمة مستقلة
+            if re.search(rf"\b{re.escape(word)}\b", text, re.IGNORECASE):
                 try:
+                    print(f"Deleting message with filtered word: {word}")
                     await event.delete()
+                    print("Message deleted.")
                     break
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Failed to delete message: {e}")
 #جلب كلمات الاغاني
 
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
