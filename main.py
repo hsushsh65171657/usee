@@ -186,7 +186,6 @@ async def userinfo(event):
         f"- Name: {user.first_name or ''} {user.last_name or ''}\n"
         f"- Username: @{user.username or 'None'}\n"
         f"- ID: `{user.id}`\n"
-        f"- Phone: {user.phone or 'None'}\n"
         f"- Profile Link: [Link](tg://user?id={user.id})\n"
         f"- Bio: {full.full_user.about or 'No bio'}\n"
         f"- Common Chats: {full.full_user.common_chats_count}\n"
