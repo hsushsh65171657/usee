@@ -13,6 +13,8 @@ from telethon.tl.functions.users import GetFullUserRequest
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon import events
+import requests
+import io
 from telethon.extensions import markdown
 from telethon import types
 from telethon.tl.types import MessageEntityCustomEmoji
@@ -67,6 +69,44 @@ async def nr(event):
         f"- Time: {current_time} [📆](emoji/5431897022456145283)"
     )
 
+#سحب النص من الصوره
+
+OCR_API_KEY = "K83161105588957"
+
+@client.on(events.NewMessage(pattern=r"\.ocr"))
+async def ocr_handler(event):
+    reply = await event.get_reply_message()
+    if not reply or not reply.media:
+        await event.reply("⚠️ Please reply to an image to extract text.")
+        return
+
+    # تنزيل الصورة من الرسالة المردودة
+    image_bytes = await reply.download_media(bytes)
+
+    # ارسال الصورة لـ OCR API
+    url = "https://api.ocr.space/parse/image"
+    headers = {
+        "apikey": OCR_API_KEY
+    }
+    files = {
+        "file": ("image.jpg", image_bytes)
+    }
+    data = {
+        "language": "eng"
+    }
+
+    response = requests.post(url, headers=headers, files=files, data=data)
+    result = response.json()
+
+    if result.get("IsErroredOnProcessing"):
+        await event.reply(f"❌ OCR failed: {result.get('ErrorMessage')}")
+        return
+
+    parsed_text = result["ParsedResults"][0]["ParsedText"].strip()
+    if parsed_text:
+        await event.reply(f"📝 Extracted Text:\n{parsed_text}")
+    else:
+        await event.reply("⚠️ No text found in the image.")
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
 async def info(event):
