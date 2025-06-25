@@ -112,7 +112,7 @@ async def add_filter(event):
             await event.reply("📭 No filtered words in this chat.")
         else:
             listed = "\n".join(f"- {w}" for w in words)
-            await event.reply(f"🧾 Filtered words in this chat:\n{listed}")
+            await event.reply(f"🧾 Filtered الكلملا in this chat:\n{listed}")
 
 # ✅ أمر .unfilter لحذف كلمة من الفلاتر
 @client.on(events.NewMessage(pattern=r"\.unfilter\s+(.+)"))
