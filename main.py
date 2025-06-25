@@ -74,12 +74,12 @@ API_KEY = "K83161105588957"
 @client.on(events.NewMessage(pattern=r"\.ocr"))
 async def ocr_handler(event):
     if not event.is_reply:
-        await event.reply("Please reply to an image to extract text.")
+        await event.edit("- Please reply to an image to extract text.")
         return
 
     reply = await event.get_reply_message()
     if not reply.photo:
-        await event.reply("The replied message is not an image.")
+        await event.edit("- The replied message is not an image.")
         return
 
     photo = await client.download_media(reply.photo, bytes)
@@ -109,10 +109,10 @@ async def ocr_handler(event):
 
     # تحقق من الأخطاء
     if result_ara.get("IsErroredOnProcessing"):
-        await event.reply("❌ OCR Arabic failed: " + result_ara.get("ErrorMessage", ["Unknown error"])[0])
+        await event.edit("- OCR Arabic failed: " + result_ara.get("ErrorMessage", ["Unknown error"])[0])
         return
     if result_eng.get("IsErroredOnProcessing"):
-        await event.reply("❌ OCR English failed: " + result_eng.get("ErrorMessage", ["Unknown error"])[0])
+        await event.edit("- OCR English failed: " + result_eng.get("ErrorMessage", ["Unknown error"])[0])
         return
 
     text_ara = result_ara["ParsedResults"][0]["ParsedText"].strip()
@@ -121,10 +121,10 @@ async def ocr_handler(event):
     combined_text = text_ara + ("\n\n" if text_ara and text_eng else "") + text_eng
 
     if not combined_text:
-        await event.reply("❌ No text found in the image.")
+        await event.edit("- No text found in the image.")
         return
 
-    await event.reply(f"📝 Extracted Text:\n\n{combined_text}")
+    await event.edit(f"📝 Extracted Text:\n\n{combined_text}")
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
 async def info(event):
@@ -164,7 +164,7 @@ async def userinfo(event):
             try:
                 user = await event.client.get_entity(arg)
             except Exception:
-                await event.reply("- Couldn't find this user.")
+                await event.edit("- Couldn't find this user.")
                 return
         else:
             user = await event.get_sender()
@@ -181,7 +181,7 @@ async def userinfo(event):
         f"- Bio: {full.full_user.about or 'No bio'}\n"
         f"- Common Chats: {full.full_user.common_chats_count}\n"
     )
-    await event.reply(info, link_preview=False)
+    await event.edit(info, link_preview=False)
 #جلب كلمات الاغاني
 
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
