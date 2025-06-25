@@ -51,6 +51,30 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
+#تحديث 
+RAILWAY_TOKEN = "ef9eed1e-5c6e-46c4-9a62-34d42a7f8611" 
+PROJECT_ID = "28e15e84-ed24-4d9d-beac-1048cf1b3af4"
+OWNER_ID = 6099048919  # معرفك انت فقط
+
+@client.on(events.NewMessage(pattern=r"\.update$"))
+async def update_source(event):
+    if event.sender_id != OWNER_ID:
+        return await event.reply("❌ You are not authorized to run this command.")
+
+    msg = await event.reply("🔄 Starting update...")
+
+    url = f"https://backboard.railway.app/project/{PROJECT_ID}/deployments"
+    headers = {
+        "Authorization": f"Bearer {RAILWAY_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, headers=headers)
+
+    if response.status_code == 200:
+        await msg.edit("✅ Update triggered successfully!\nWait a few seconds then your bot will reload.")
+    else:
+        await msg.edit(f"❌ Failed to update:\n`{response.text}`")
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
