@@ -141,7 +141,7 @@ async def show_commands(event):
 ——————————————————————————————
 - Dev Source: @S5llll
 """
-    await event.reply(commands_text)
+    await event.edit(commands_text)
 
 
 @client.on(events.NewMessage(pattern=r"\.delall"))
