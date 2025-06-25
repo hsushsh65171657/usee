@@ -9,7 +9,6 @@ import datetime
 import subprocess
 import psutil
 import pytz
-from telethon.tl.types import MessageMediaDocument
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon import events
@@ -93,61 +92,43 @@ async def delete_my_messages(event):
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 # جلب معلومات استيكر
-from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
+from telethon.tl.functions.users import GetFullUserRequest
 
-@client.on(events.NewMessage(pattern=r"\.stickerinfo"))
-async def sticker_info(event):
-    msg = await event.get_reply_message()
-    if not msg:
-        await event.reply("⚠️ Please reply to a sticker message.")
+@client.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(\S+))?"))
+async def userinfo(event):
+    if event.is_private:
+        await event.reply("⚠️ This command works only in groups or channels.")
         return
 
-    # تحقق إذا الرسالة تحتوي ملصق (media document) أو صورة (بعض الملصقات تظهر كصور)
-    if not msg.media:
-        await event.reply("⚠️ The replied message has no media.")
-        return
-
-    # تحقق من نوع الملصق (وثيقة أو صورة)
-    if not (isinstance(msg.media, MessageMediaDocument) or isinstance(msg.media, MessageMediaPhoto)):
-        await event.reply("⚠️ The replied message is not a sticker or photo.")
-        return
-
-    if isinstance(msg.media, MessageMediaDocument):
-        doc = msg.media.document
-        # تحقق من وجود attributes
-        if not doc.attributes:
-            await event.reply("⚠️ No attributes found in this sticker.")
-            return
-
-        # ابحث عن الـ custom emoji document_id
-        custom_emoji_id = None
-        for attr in doc.attributes:
-            if hasattr(attr, 'document_id'):
-                custom_emoji_id = attr.document_id
-                break
-
-        if not custom_emoji_id:
-            await event.reply("⚠️ This sticker is not a custom emoji (premium).")
-            return
-
-        # اسم حزمة الملصقات (إذا متوفر)
-        sticker_set = None
-        for attr in doc.attributes:
-            if hasattr(attr, 'stickerset'):
-                sticker_set = attr.stickerset
-                break
-
-        response = f"🎟️ **Sticker Info:**\n"
-        response += f"- Custom Emoji ID: `{custom_emoji_id}`\n"
-        if sticker_set:
-            response += f"- Sticker Set: `{sticker_set.short_name}`\n"
-        else:
-            response += "- Sticker Set: Not available\n"
-
-        await event.reply(response)
+    # نحاول نحصل على المستخدم إما من الرد أو من المعطى مع الأمر (يوزرنيم أو آيدي)
+    user = None
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        user = await event.client.get_entity(reply_msg.from_id)
     else:
-        # إذا الملصق صورة (ليس custom emoji)
-        await event.reply("⚠️ This sticker is not a custom emoji (premium).")
+        arg = event.pattern_match.group(1)
+        if arg:
+            try:
+                user = await event.client.get_entity(arg)
+            except Exception:
+                await event.reply("⚠️ Couldn't find this user.")
+                return
+        else:
+            user = await event.get_sender()
+
+    full = await event.client(GetFullUserRequest(user.id))
+
+    info = (
+        f"👤 **User Info:**\n"
+        f"- Name: {user.first_name or ''} {user.last_name or ''}\n"
+        f"- Username: @{user.username or 'None'}\n"
+        f"- ID: `{user.id}`\n"
+        f"- Phone: {user.phone or 'None'}\n"
+        f"- Profile Link: [Link](tg://user?id={user.id})\n"
+        f"- Bio: {full.about or 'No bio'}\n"
+        f"- Common Chats: {full.common_chats_count}\n"
+    )
+    await event.reply(info, link_preview=False)
 #جلب كلمات الاغاني
 
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
