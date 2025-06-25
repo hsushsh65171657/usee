@@ -217,11 +217,11 @@ async def lyrics_handler(event):
 @client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
     query = event.pattern_match.group(1)
-    msg = await event.edit("- Loading …")
+    msg = await event.edit("- Loading...")
 
     ydl_opts = {
         'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': 'HRBY(@s5llll).%(ext)s',
+        'outtmpl': 'HRBY (@s5llll).%(ext)s',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
@@ -234,6 +234,16 @@ async def youtube_audio(event):
                 info = info['entries'][0]
             filename = ydl.prepare_filename(info)
 
+        # تحميل صورة المصغرة
+        thumb_url = info.get('thumbnail')
+        thumb_path = "thumb.jpg"
+        if thumb_url:
+            r = requests.get(thumb_url)
+            with open(thumb_path, "wb") as f:
+                f.write(r.content)
+        else:
+            thumb_path = None
+
         # معرفة منو طلب التحميل
         sender = await event.get_sender()
         username = f"@{sender.username}" if sender.username else sender.first_name
@@ -241,24 +251,25 @@ async def youtube_audio(event):
         # نص الكابشن
         caption = f"Downloaded successfully ✅\n🔴 Song name: {info['title']}\n🎖️By: {username}"
 
-        # إرسال الملف
+        # إرسال الملف مع الصورة المصغرة
         await client.send_file(
             event.chat_id,
             filename,
             caption=caption,
+            thumb=thumb_path if os.path.exists(thumb_path) else None,
             voice_note=False
         )
 
         await msg.delete()
 
-        # حذف الملف من السيرفر
+        # حذف الملفات المؤقتة
         if os.path.exists(filename):
             os.remove(filename)
+        if os.path.exists(thumb_path):
+            os.remove(thumb_path)
 
     except Exception as e:
-        await msg.edit(
-            f"🧩 Erorr:\n`{str(e)}`"
-        )
+        await msg.edit(f"- Error:\n`{str(e)}`")
     
 client.start()
 print("⚡ Bot is running...")
