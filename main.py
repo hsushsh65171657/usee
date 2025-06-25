@@ -164,33 +164,49 @@ async def delete_my_messages(event):
 
 @client.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(\S+))?"))
 async def userinfo(event):
+    input_arg = event.pattern_match.group(1)
     user = None
-    if event.is_reply:
-        reply_msg = await event.get_reply_message()
-        user = await event.client.get_entity(reply_msg.from_id)
-    else:
-        arg = event.pattern_match.group(1)
-        if arg:
-            try:
-                user = await event.client.get_entity(arg)
-            except Exception:
-                await event.edit("- Couldn't find this user.")
-                return
+
+    try:
+        # ✅ إذا أكو رد
+        if event.is_reply:
+            reply_msg = await event.get_reply_message()
+            user = await event.client.get_entity(reply_msg.sender_id)
+            full = await event.client(GetFullUserRequest(reply_msg.sender_id))
+
+        # ✅ إذا أكو يوزر أو ID مكتوب
+        elif input_arg:
+            user = await event.client.get_entity(input_arg)
+            full = await event.client(GetFullUserRequest(user.id))
+
+        # ✅ إذا ماكو رد ولا إدخال، رجّع معلوماتك
         else:
             user = await event.get_sender()
+            full = await event.client(GetFullUserRequest(user.id))
 
-    full = await event.client(GetFullUserRequest(user.id))
+        # ✅ بيانات احتياطية
+        first = user.first_name or ""
+        last = user.last_name or ""
+        username = f"@{user.username}" if user.username else "None"
+        user_id = user.id
+        bio = getattr(full.full_user, 'about', 'No bio')
+        common_chats = getattr(full.full_user, 'common_chats_count', 'N/A')
 
-    info = (
-        f"👤 **User Info:**\n"
-        f"- Name: {user.first_name or ''} {user.last_name or ''}\n"
-        f"- Username: @{user.username or 'None'}\n"
-        f"- ID: `{user.id}`\n"
-        f"- Profile Link: [Link](tg://user?id={user.id})\n"
-        f"- Bio: {full.full_user.about or 'No bio'}\n"
-        f"- Common Chats: {full.full_user.common_chats_count}\n"
-    )
-    await event.edit(info, link_preview=False)
+        info = (
+            f"👤 **User Info:**\n"
+            f"- Name: {first} {last}\n"
+            f"- Username: {username}\n"
+            f"- ID: `{user_id}`\n"
+            f"- Profile Link: [Click Here](tg://user?id={user_id})\n"
+            f"- Bio: {bio}\n"
+            f"- Common Chats: {common_chats}"
+        )
+
+        await event.edit(info, link_preview=False)
+
+    except Exception as e:
+        await event.reply(f"❌ Error:\n`{str(e)}`")
+
 #جلب كلمات الاغاني
 
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
