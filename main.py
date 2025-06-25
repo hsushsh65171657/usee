@@ -74,7 +74,7 @@ async def update_source(event):
     if response.status_code == 200:
         await msg.edit("✅ Update triggered successfully!\nWait a few seconds then your bot will reload.")
     else:
-        await msg.edit(f"❌ Failed to update:\n`{response.text}`")
+        await msg.edit(f"Failed to update:\n`{response.text}`")
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
