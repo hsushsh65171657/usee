@@ -52,7 +52,7 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
 #تحديث 
-RAILWAY_TOKEN = "ef9eed1e-5c6e-46c4-9a62-34d42a7f8611" 
+RAILWAY_TOKEN = "ef9eed1e-5c6e-46c4-9a62-34d42a..."  # ضيفه كـ VARIABLE أو بدّله هنا مؤقتًا
 PROJECT_ID = "28e15e84-ed24-4d9d-beac-1048cf1b3af4"
 OWNER_ID = 6099048919  # معرفك انت فقط
 
@@ -63,7 +63,7 @@ async def update_source(event):
 
     msg = await event.reply("🔄 Starting update...")
 
-    url = f"https://backboard.railway.app/project/{PROJECT_ID}/deployments"
+    url = f"https://api.railway.app/v1/projects/{PROJECT_ID}/deployments"
     headers = {
         "Authorization": f"Bearer {RAILWAY_TOKEN}",
         "Content-Type": "application/json"
@@ -71,10 +71,10 @@ async def update_source(event):
 
     response = requests.post(url, headers=headers)
 
-    if response.status_code == 200:
+    if response.status_code == 201:  # لأن إنشاء نشر جديد يرجع 201 Created
         await msg.edit("✅ Update triggered successfully!\nWait a few seconds then your bot will reload.")
     else:
-        await msg.edit(f"Failed to update:\n`{response.text}`")
+        await msg.edit(f"❌ Failed to update:\n`{response.status_code} - {response.text}`")
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
