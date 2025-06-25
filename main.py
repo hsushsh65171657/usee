@@ -9,6 +9,7 @@ import datetime
 import subprocess
 import psutil
 import pytz
+from telethon.tl.functions.users import GetFullUserRequest
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon import events
@@ -92,7 +93,6 @@ async def delete_my_messages(event):
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 # جلب معلومات استيكر
-from telethon.tl.functions.users import GetFullUserRequest
 
 @client.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(\S+))?"))
 async def userinfo(event):
@@ -100,7 +100,6 @@ async def userinfo(event):
         await event.reply("⚠️ This command works only in groups or channels.")
         return
 
-    # نحاول نحصل على المستخدم إما من الرد أو من المعطى مع الأمر (يوزرنيم أو آيدي)
     user = None
     if event.is_reply:
         reply_msg = await event.get_reply_message()
@@ -125,7 +124,7 @@ async def userinfo(event):
         f"- ID: `{user.id}`\n"
         f"- Phone: {user.phone or 'None'}\n"
         f"- Profile Link: [Link](tg://user?id={user.id})\n"
-        f"- Bio: {full.about or 'No bio'}\n"
+        f"- Bio: {full.full_user.about or 'No bio'}\n"
         f"- Common Chats: {full.common_chats_count}\n"
     )
     await event.reply(info, link_preview=False)
