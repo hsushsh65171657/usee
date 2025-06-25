@@ -125,7 +125,7 @@ async def userinfo(event):
         f"- Phone: {user.phone or 'None'}\n"
         f"- Profile Link: [Link](tg://user?id={user.id})\n"
         f"- Bio: {full.full_user.about or 'No bio'}\n"
-        f"- Common Chats: {full.common_chats_count}\n"
+        f"- Common Chats: {full.full_user.common_chats_count}\n"
     )
     await event.reply(info, link_preview=False)
 #جلب كلمات الاغاني
