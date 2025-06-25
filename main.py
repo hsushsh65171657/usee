@@ -92,14 +92,10 @@ async def delete_my_messages(event):
 
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
-# جلب معلومات استيكر
+# جلب معلومات الشخص
 
 @client.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(\S+))?"))
 async def userinfo(event):
-    if event.is_private:
-        await event.reply("⚠️ This command works only in groups or channels.")
-        return
-
     user = None
     if event.is_reply:
         reply_msg = await event.get_reply_message()
@@ -110,7 +106,7 @@ async def userinfo(event):
             try:
                 user = await event.client.get_entity(arg)
             except Exception:
-                await event.reply("⚠️ Couldn't find this user.")
+                await event.reply("- Couldn't find this user.")
                 return
         else:
             user = await event.get_sender()
