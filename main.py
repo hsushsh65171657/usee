@@ -93,6 +93,8 @@ async def delete_my_messages(event):
     await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 # جلب معلومات استيكر
+from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
+
 @client.on(events.NewMessage(pattern=r"\.stickerinfo"))
 async def sticker_info(event):
     msg = await event.get_reply_message()
@@ -100,41 +102,52 @@ async def sticker_info(event):
         await event.reply("⚠️ Please reply to a sticker message.")
         return
 
-    if not msg.media or not isinstance(msg.media, MessageMediaDocument):
-        await event.reply("⚠️ The replied message is not a sticker.")
+    # تحقق إذا الرسالة تحتوي ملصق (media document) أو صورة (بعض الملصقات تظهر كصور)
+    if not msg.media:
+        await event.reply("⚠️ The replied message has no media.")
         return
 
-    doc = msg.media.document
-    if not doc.attributes:
-        await event.reply("⚠️ No attributes found in this sticker.")
+    # تحقق من نوع الملصق (وثيقة أو صورة)
+    if not (isinstance(msg.media, MessageMediaDocument) or isinstance(msg.media, MessageMediaPhoto)):
+        await event.reply("⚠️ The replied message is not a sticker or photo.")
         return
 
-    # تحقق من وجود الملصق المميز (Custom Emoji)
-    custom_emoji_id = None
-    for attr in doc.attributes:
-        if hasattr(attr, 'document_id'):
-            custom_emoji_id = attr.document_id
-            break
+    if isinstance(msg.media, MessageMediaDocument):
+        doc = msg.media.document
+        # تحقق من وجود attributes
+        if not doc.attributes:
+            await event.reply("⚠️ No attributes found in this sticker.")
+            return
 
-    if not custom_emoji_id:
-        await event.reply("⚠️ This sticker is not a custom emoji (premium).")
-        return
+        # ابحث عن الـ custom emoji document_id
+        custom_emoji_id = None
+        for attr in doc.attributes:
+            if hasattr(attr, 'document_id'):
+                custom_emoji_id = attr.document_id
+                break
 
-    # اسم حزمة الملصقات (إذا متوفر)
-    sticker_set = None
-    for attr in doc.attributes:
-        if hasattr(attr, 'stickerset'):
-            sticker_set = attr.stickerset
-            break
+        if not custom_emoji_id:
+            await event.reply("⚠️ This sticker is not a custom emoji (premium).")
+            return
 
-    response = f"🎟️ **Sticker Info:**\n"
-    response += f"- Custom Emoji ID: `{custom_emoji_id}`\n"
-    if sticker_set:
-        response += f"- Sticker Set: `{sticker_set.short_name}`\n"
+        # اسم حزمة الملصقات (إذا متوفر)
+        sticker_set = None
+        for attr in doc.attributes:
+            if hasattr(attr, 'stickerset'):
+                sticker_set = attr.stickerset
+                break
+
+        response = f"🎟️ **Sticker Info:**\n"
+        response += f"- Custom Emoji ID: `{custom_emoji_id}`\n"
+        if sticker_set:
+            response += f"- Sticker Set: `{sticker_set.short_name}`\n"
+        else:
+            response += "- Sticker Set: Not available\n"
+
+        await event.reply(response)
     else:
-        response += "- Sticker Set: Not available\n"
-
-    await event.reply(response)
+        # إذا الملصق صورة (ليس custom emoji)
+        await event.reply("⚠️ This sticker is not a custom emoji (premium).")
 #جلب كلمات الاغاني
 
 GENIUS_ACCESS_TOKEN = "TK4d53dccU7WH1GDO2GdU9EI39laxrzv340vMrqbq1gxCJvcdUIIabKhlEDhhWY-"
