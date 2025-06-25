@@ -47,7 +47,7 @@ api_id = 15284003
 api_hash = "6a9c0e4c844161f44e7f31473ea4931b"
 string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7SaUYSmsNEXac6l90jJXvPTbeQ0QCXqt3nUvlDQct6Mho5R78b9nw5jwZAxomVP_zvu3rOg5NUr4KRnzNNsE6OqHAjFkdKzjWxYck_q4moFtwQZ-rjmrcY-tNHw-YZHOVEWPgNuDTbsdYX_RqikFvpN7KJdCMw3qV1xGMr1LsKa7QOCbuJs3sktUge0f3cLgvmR7eHRAcc20k5sVjUGfpLEMWFrQjPaYQuZo4kZyIGrxD7SliDa97HlNo7T9kFUqhbdSLm-u-cmaNs8eeOLbMZi1M9eQ="
 
-# ✅ إنشاء العميل
+# ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
@@ -69,44 +69,62 @@ async def nr(event):
         f"- Time: {current_time} [📆](emoji/5431897022456145283)"
     )
 
-#سحب النص من الصوره
-
-OCR_API_KEY = "K83161105588957"
-
+#سحب النص من الصورهA
+API_KEY = "K83161105588957"
 @client.on(events.NewMessage(pattern=r"\.ocr"))
 async def ocr_handler(event):
-    reply = await event.get_reply_message()
-    if not reply or not reply.media:
-        await event.reply("⚠️ Please reply to an image to extract text.")
+    if not event.is_reply:
+        await event.reply("Please reply to an image to extract text.")
         return
 
-    # تنزيل الصورة من الرسالة المردودة
-    image_bytes = await reply.download_media(bytes)
+    reply = await event.get_reply_message()
+    if not reply.photo:
+        await event.reply("The replied message is not an image.")
+        return
 
-    # ارسال الصورة لـ OCR API
+    photo = await client.download_media(reply.photo, bytes)
     url = "https://api.ocr.space/parse/image"
     headers = {
-        "apikey": OCR_API_KEY
+        "apikey": API_KEY,
+    }
+    payload_ara = {
+        "language": "ara",
+        "isOverlayRequired": False,
+    }
+    payload_eng = {
+        "language": "eng",
+        "isOverlayRequired": False,
     }
     files = {
-        "file": ("image.jpg", image_bytes)
-    }
-    data = {
-        "language": "ara+eng"
+        "file": ("image.jpg", photo)
     }
 
-    response = requests.post(url, headers=headers, files=files, data=data)
-    result = response.json()
+    # طلب اللغة العربية
+    response_ara = requests.post(url, headers=headers, data=payload_ara, files=files)
+    result_ara = response_ara.json()
 
-    if result.get("IsErroredOnProcessing"):
-        await event.reply(f"❌ OCR failed: {result.get('ErrorMessage')}")
+    # طلب اللغة الانجليزية
+    response_eng = requests.post(url, headers=headers, data=payload_eng, files=files)
+    result_eng = response_eng.json()
+
+    # تحقق من الأخطاء
+    if result_ara.get("IsErroredOnProcessing"):
+        await event.reply("❌ OCR Arabic failed: " + result_ara.get("ErrorMessage", ["Unknown error"])[0])
+        return
+    if result_eng.get("IsErroredOnProcessing"):
+        await event.reply("❌ OCR English failed: " + result_eng.get("ErrorMessage", ["Unknown error"])[0])
         return
 
-    parsed_text = result["ParsedResults"][0]["ParsedText"].strip()
-    if parsed_text:
-        await event.reply(f"📝 Extracted Text:\n{parsed_text}")
-    else:
-        await event.reply("⚠️ No text found in the image.")
+    text_ara = result_ara["ParsedResults"][0]["ParsedText"].strip()
+    text_eng = result_eng["ParsedResults"][0]["ParsedText"].strip()
+
+    combined_text = text_ara + ("\n\n" if text_ara and text_eng else "") + text_eng
+
+    if not combined_text:
+        await event.reply("❌ No text found in the image.")
+        return
+
+    await event.reply(f"📝 Extracted Text:\n\n{combined_text}")
 # ✅ أمر /info معلومات النظام
 @client.on(events.NewMessage(pattern='/info'))
 async def info(event):
