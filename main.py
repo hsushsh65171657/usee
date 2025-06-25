@@ -125,13 +125,23 @@ async def ocr_handler(event):
         return
 
     await event.edit(f"📝 Extracted Text:\n\n{combined_text}")
-# ✅ أمر /info معلومات النظام
-@client.on(events.NewMessage(pattern='/info'))
-async def info(event):
-    ram_usage = psutil.virtual_memory().percent
-    cpu_usage = psutil.cpu_percent()
-    response = f"info server : [🌟](emoji/5787418193127542105)\nRam : {ram_usage}% [🔥](emoji/5354863081740580440)\nCPU {cpu_usage}%[🔥](emoji/5345941618623005800)"
-    await event.edit(response)
+#كود الاوامر
+@client.on(events.NewMessage(pattern=r"\.comands"))
+async def show_commands(event):
+    commands_text = """
+📋 **Available Commands in Your Userbot:**
+
+1. `.cheek` - Checks if the bot is running properly.
+2. `.delall` - Deletes all the messages you have sent.
+3. `.userinfo [username or reply]` - Shows information about a user.
+4. `.lyrics` - Displays song lyrics.
+5. `.youtube <keyword or link>` - Downloads audio from YouTube or searches for videos.
+6. `.ocr` - Extracts text from images (reply to a photo).
+7. `.comands` - Shows this list of
+——————————————————————————————
+- Dev Source: @S5llll
+"""
+    await event.reply(commands_text)
 
 
 @client.on(events.NewMessage(pattern=r"\.delall"))
