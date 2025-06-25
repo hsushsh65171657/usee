@@ -92,7 +92,7 @@ async def ocr_handler(event):
         "file": ("image.jpg", image_bytes)
     }
     data = {
-        "language": "eng"
+        "language": "ara+eng"
     }
 
     response = requests.post(url, headers=headers, files=files, data=data)
