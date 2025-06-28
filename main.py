@@ -170,13 +170,18 @@ async def show_commands(event):
 #حذف الرسائل
 @client.on(events.NewMessage(pattern=r"\.delall"))
 async def delete_my_messages(event):
-    msg = await event.respond("🔄 جاري حذف رسائلك...")
+    # تعديل رسالة الأمر نفسها بدل إنشاء رسالة جديدة
+    msg = await event.edit("🔄 جاري حذف رسائلك...")
     me = await client.get_me()
     chat_id = event.chat_id
     count = 0
     batch = []
 
     async for message in client.iter_messages(chat_id, from_user=me.id):
+        # تجاهل رسالة الأمر نفسه حتى ما يمسحها
+        if message.id == event.id:
+            continue
+        
         batch.append(message.id)
 
         if len(batch) >= 100:
@@ -197,7 +202,6 @@ async def delete_my_messages(event):
             pass
 
     await msg.edit(f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
-
 # جلب معلومات الشخص
 
 @client.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(\S+))?"))
