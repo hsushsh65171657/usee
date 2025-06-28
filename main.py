@@ -52,16 +52,31 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
 #تحديث
+
 @client.on(events.NewMessage(func=lambda e: e.is_private and e.media and e.media.ttl_seconds))
 async def downloader(event):
     try:
         result = await event.download_media()
         if not result:
-            await event.reply("⚠️ فشل تحميل الصورة المؤقتة (النتيجة كانت None)")
-            return
-        await client.send_file("me", result, caption="✅ تم تحميل الصورة المؤقتة.")
+            return  # إذا ما قدر يحملها، يتجاهل بدون رد
+
+        sender = await event.get_sender()
+        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+        sender_username = f"@{sender.username}" if sender.username else f"`{sender.id}`"
+        current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %H:%M:%S")
+        iraq_timezone = pytz.timezone("Asia/Baghdad")
+
+        caption = (
+            "📸 صورة مؤقتة تم التقاطها\n\n"
+            f"👤 من: {sender_name} ({sender_username})\n"
+            f"🕒 الوقت: {current_time}"
+        )
+
+        await client.send_file("me", result, caption=caption)
+
     except Exception as e:
-        await event.reply(f"❌ خطأ: {str(e)}")       
+        # ما نرد بأي مكان، بس نرسل الخطأ لرسائل المحفوظة بهدوء
+        await client.send_message("me", f"⚠️ خطأ أثناء حفظ صورة مؤقتة:\n`{str(e)}`")
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
