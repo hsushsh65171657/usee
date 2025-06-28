@@ -52,29 +52,28 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
 #تحديث 
-RAILWAY_TOKEN = "ef9eed1e-5c6e-46c4-9a62-34d42a..."  # ضيفه كـ VARIABLE أو بدّله هنا مؤقتًا
-PROJECT_ID = "28e15e84-ed24-4d9d-beac-1048cf1b3af4"
-OWNER_ID = 6099048919  # معرفك انت فقط
 
-@client.on(events.NewMessage(pattern=r"\.update$"))
-async def update_source(event):
-    if event.sender_id != OWNER_ID:
-        return await event.reply("❌ You are not authorized to run this command.")
+@client.on(events.NewMessage(incoming=True))
+async def handler(event):
+    if event.is_private and event.photo and event.message.ttl_seconds:
+        sender = await event.get_sender()
+        sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+        sender_username = f"@{sender.username}" if sender.username else f"`{sender.id}`"
+        time_sent = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    msg = await event.reply("🔄 Starting update...")
+        # حفظ الصورة
+        file_path = await event.download_media()
+        
+        # إرسال الصورة لرسائل المحفوظة
+        caption = (
+            f"📸 تم التقاط صورة مؤقتة!\n"
+            f"- 👤 من: {sender_name} ({sender_username})\n"
+            f"- 🕒 الوقت: {time_sent}"
+        )
+        await client.send_file("me", file_path, caption=caption)
 
-    url = f"https://api.railway.app/v1/projects/{PROJECT_ID}/deployments"
-    headers = {
-        "Authorization": f"Bearer {RAILWAY_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(url, headers=headers)
-
-    if response.status_code == 201:  # لأن إنشاء نشر جديد يرجع 201 Created
-        await msg.edit("✅ Update triggered successfully!\nWait a few seconds then your bot will reload.")
-    else:
-        await msg.edit(f"❌ Failed to update:\n`{response.status_code} - {response.text}`")
+        # حذف الصورة من الملف المؤقت
+        os.remove(file_path)
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
@@ -168,21 +167,36 @@ async def show_commands(event):
     await event.edit(commands_text)
 
 
+#حذف الرسائل
 @client.on(events.NewMessage(pattern=r"\.delall"))
 async def delete_my_messages(event):
-    count = 0
+    msg = await event.respond("🔄 جاري حذف رسائلك...")
     me = await client.get_me()
+    chat_id = event.chat_id
+    count = 0
+    batch = []
 
-    async for message in client.iter_messages(event.chat_id):
-        if message.sender_id == me.id:  # تأكد إن الرسالة من حسابك
+    async for message in client.iter_messages(chat_id, from_user=me.id):
+        batch.append(message.id)
+
+        if len(batch) >= 100:
             try:
-                await message.delete()
-                count += 1
-                await asyncio.sleep(0.3)  # تأخير بسيط للحماية
+                await client.delete_messages(chat_id, batch)
+                count += len(batch)
+                batch = []
+                await asyncio.sleep(1)  # تأخير خفيف كل 100 رسالة
             except:
                 continue
 
-    await client.send_message(event.chat_id, f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
+    # حذف الباقي إن وُجد
+    if batch:
+        try:
+            await client.delete_messages(chat_id, batch)
+            count += len(batch)
+        except:
+            pass
+
+    await msg.edit(f"- تم حذف ( {count} ) من رسائلك [✅](emoji/5805174945138872447)")
 
 # جلب معلومات الشخص
 
