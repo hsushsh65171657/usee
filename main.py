@@ -52,7 +52,7 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 
 #تحديث
- @client.on(events.NewMessage(func=lambda e: e.is_private and e.media and e.media.ttl_seconds))
+@client.on(events.NewMessage(func=lambda e: e.is_private and e.media and e.media.ttl_seconds))
 async def downloader(event):
     try:
         result = await event.download_media()
