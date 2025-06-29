@@ -57,8 +57,7 @@ async def fetch_message(event):
     link = event.pattern_match.group(1)
     match = re.match(r"https://t\.me/([^/]+)/(\d+)", link)
     if not match:
-        await event.edit("❌ رابط غير صالح.")
-        return
+        return await event.edit("❌ رابط غير صالح.")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
@@ -66,29 +65,43 @@ async def fetch_message(event):
     try:
         await event.edit("📥 جاري جلب الرسالة...")
 
-        # نحاول نجيب الرسالة الأساسية
-        main_msg = await client.get_messages(channel_username, ids=msg_id)
-        if not main_msg:
-            return await event.edit("❌ الرسالة غير موجودة.")
+        msg = await client.get_messages(channel_username, ids=msg_id)
+        if not msg:
+            return await event.edit("❌ لم يتم العثور على الرسالة.")
 
-        # نتحقق إذا كانت الرسالة جزء من ميدياگروب (ألبوم صور/فيديو)
-        if main_msg.grouped_id:
-            all_msgs = await client.get_messages(channel_username, min_id=msg_id - 20, max_id=msg_id + 20)
+        # إذا الرسالة تحتوي ميديا
+        if msg.media:
+            temp_file = await client.download_media(msg, file="./temp/")
+            caption = msg.text or ""
+            media_type = "ميديا"
 
-            # نفلتر الرسائل اللي ضمن نفس الـ Media Group
-            grouped = [msg for msg in all_msgs if msg.grouped_id == main_msg.grouped_id]
-            grouped = sorted(grouped, key=lambda m: m.id)
+            if msg.photo:
+                media_type = "صورة"
+            elif msg.video:
+                media_type = "فيديو"
+            elif msg.document:
+                media_type = "ملف"
+            elif msg.audio:
+                media_type = "صوت"
 
-            await event.delete()
-            for msg in grouped:
-                await client.send_message(event.chat_id, msg)
+            caption_msg = f"✅ تم سحب {media_type} من قناة: @{channel_username}"
+            if caption:
+                caption_msg += f"\n📝 التعليق: {caption}"
+
+            await client.send_file(event.chat_id, temp_file, caption=caption_msg)
+            os.remove(temp_file)
         else:
-            # مو ألبوم، فقط رسالة واحدة
-            await client.send_message(event.chat_id, main_msg)
-            await event.delete()
+            # فقط نص
+            text = msg.text or "📭 (رسالة فارغة)"
+            await client.send_message(
+                event.chat_id,
+                f"📝 تم سحب النص من قناة: @{channel_username}\n\n{text}"
+            )
+
+        await event.delete()
 
     except Exception as e:
-        await event.edit(f"❌ خطأ أثناء السحب:\n`{e}`")
+        await event.edit(f"❌ خطأ:\n`{e}`")
 
 #كود كتم
 
