@@ -51,7 +51,46 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 # ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
-#تخزين تيست
+#كود سحب نص من قنوات
+@client.on(events.NewMessage(pattern=r"\.سحب\s+(https://t\.me/[^/]+/\d+)"))
+async def fetch_message(event):
+    link = event.pattern_match.group(1)
+    match = re.match(r"https://t\.me/([^/]+)/(\d+)", link)
+    if not match:
+        await event.edit("❌ رابط غير صالح.")
+        return
+
+    channel_username = match.group(1)
+    msg_id = int(match.group(2))
+
+    try:
+        await event.edit("📥 جاري جلب الرسالة...")
+
+        # نحاول نجيب الرسالة الأساسية
+        main_msg = await client.get_messages(channel_username, ids=msg_id)
+        if not main_msg:
+            return await event.edit("❌ الرسالة غير موجودة.")
+
+        # نتحقق إذا كانت الرسالة جزء من ميدياگروب (ألبوم صور/فيديو)
+        if main_msg.grouped_id:
+            all_msgs = await client.get_messages(channel_username, min_id=msg_id - 20, max_id=msg_id + 20)
+
+            # نفلتر الرسائل اللي ضمن نفس الـ Media Group
+            grouped = [msg for msg in all_msgs if msg.grouped_id == main_msg.grouped_id]
+            grouped = sorted(grouped, key=lambda m: m.id)
+
+            await event.delete()
+            for msg in grouped:
+                await client.send_message(event.chat_id, msg)
+        else:
+            # مو ألبوم، فقط رسالة واحدة
+            await client.send_message(event.chat_id, main_msg)
+            await event.delete()
+
+    except Exception as e:
+        await event.edit(f"❌ خطأ أثناء السحب:\n`{e}`")
+
+#كود كتم
 
 MUTED_FILE = "muted.json"
 
