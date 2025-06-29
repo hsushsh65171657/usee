@@ -5,6 +5,7 @@ import asyncio
 import re
 import random
 import time
+import json
 import datetime
 import subprocess
 import psutil
@@ -50,7 +51,56 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 # ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
+#تخزين تيست
 
+FILTER_FILE = "filters.json"
+
+# تحميل الكلمات من الملف
+def load_filters():
+    if not os.path.exists(FILTER_FILE):
+        return []
+    with open(FILTER_FILE, "r") as f:
+        data = json.load(f)
+        return data.get("filters", [])
+
+# حفظ الكلمات إلى الملف
+def save_filters(words):
+    with open(FILTER_FILE, "w") as f:
+        json.dump({"filters": words}, f, indent=4)
+
+# أمر: .اضف <كلمة>
+@client.on(events.NewMessage(pattern=r"\.اضف (.+)"))
+async def add_word(event):
+    word = event.pattern_match.group(1).strip()
+    filters = load_filters()
+    if word in filters:
+        await event.edit(f"✅ الكلمة '{word}' موجودة مسبقًا.")
+        return
+    filters.append(word)
+    save_filters(filters)
+    await event.edit(f"✅ تمت إضافة الكلمة: `{word}`")
+
+# أمر: .كلماتي
+@client.on(events.NewMessage(pattern=r"\.كلماتي"))
+async def show_words(event):
+    filters = load_filters()
+    if not filters:
+        await event.edit("📭 لا توجد كلمات مخزنة.")
+    else:
+        msg = "📚 الكلمات المخزنة:\n- " + "\n- ".join(filters)
+        await event.edit(msg)
+
+# أمر: .احذف <كلمة>
+@client.on(events.NewMessage(pattern=r"\.احذف (.+)"))
+async def delete_word(event):
+    word = event.pattern_match.group(1).strip()
+    filters = load_filters()
+    if word not in filters:
+        await event.edit(f"❌ الكلمة '{word}' غير موجودة.")
+        return
+    filters.remove(word)
+    save_filters(filters)
+    await event.edit(f"🗑️ تم حذف الكلمة: `{word}`")
 #تحديث
 
 iraq_timezone = pytz.timezone("Asia/Baghdad")
