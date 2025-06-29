@@ -57,51 +57,71 @@ async def fetch_message(event):
     link = event.pattern_match.group(1)
     match = re.match(r"https://t\.me/([^/]+)/(\d+)", link)
     if not match:
-        return await event.edit("❌ رابط غير صالح.")
+        return await event.edit("❌ الرابط مو مضبوط")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
 
     try:
-        await event.edit("📥 جاري جلب الرسالة...")
+        status_msg = await event.edit("📥 ده احمّل الرسالة...")
 
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
-            return await event.edit("❌ لم يتم العثور على الرسالة.")
+            return await status_msg.edit("❌ ما لكيت الرسالة")
 
-        # إذا الرسالة تحتوي ميديا
+        message_link = f"https://t.me/{channel_username}/{msg_id}"
+        caption = msg.text or msg.message or ""
+        caption = str(caption).strip()
+
+        # إذا بيها ميديا
         if msg.media:
-            temp_file = await client.download_media(msg, file="./temp/")
-            caption = msg.text or ""
-            media_type = "ميديا"
+            file = BytesIO()
+            file.name = "file"
+            await client.download_media(msg, file=file)
+            file.seek(0)
 
+            media_type = "ميديا"
             if msg.photo:
                 media_type = "صورة"
+                file.name = "image.jpg"
             elif msg.video:
                 media_type = "فيديو"
+                file.name = "video.mp4"
             elif msg.document:
                 media_type = "ملف"
+                file.name = msg.file.name or "file"
             elif msg.audio:
                 media_type = "صوت"
+                file.name = "audio.mp3"
 
-            caption_msg = f"✅ تم سحب {media_type} من قناة: @{channel_username}"
+            final_caption = (
+                f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
+                f"\n🆔 رقم الرسالة: `{msg_id}`"
+            )
             if caption:
-                caption_msg += f"\n📝 التعليق: {caption}"
+                final_caption += f"\n\n📝 التعليق:\n{caption}"
 
-            await client.send_file(event.chat_id, temp_file, caption=caption_msg)
-            os.remove(temp_file)
-        else:
-            # فقط نص
-            text = msg.text or "📭 (رسالة فارغة)"
-            await client.send_message(
+            await client.send_file(
                 event.chat_id,
-                f"📝 تم سحب النص من قناة: @{channel_username}\n\n{text}"
+                file,
+                caption=final_caption,
+                parse_mode="md",
+                link_preview=False
             )
 
-        await event.delete()
+        elif caption:
+            await client.send_message(
+                event.chat_id,
+                f"📝 تم سحب نص من [@{channel_username}]({message_link})"
+                f"\n🆔 رقم الرسالة: `{msg_id}`\n\n{caption}",
+                parse_mode="md",
+                link_preview=False
+            )
+
+        await status_msg.delete()
 
     except Exception as e:
-        await event.edit(f"❌ خطأ:\n`{e}`")
+        await event.edit(f"❌ صار خطأ:\n`{e}`")
 
 #كود كتم
 
