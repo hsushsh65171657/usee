@@ -53,20 +53,24 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #كود سحب نص من قنوات
 
+import re
+from io import BytesIO
+from telethon import events
+
 @client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
 async def _(event):
     match = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', event.pattern_match.group(1))
     if not match:
-        return await event.edit("Invalid link format.")
+        return await event.edit("- Invalid link format.")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
 
     try:
-        status_msg = await event.edit("Fetching message...")
+        status_msg = await event.edit("- Downloading media from protected channel...")
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
-            return await status_msg.edit("Message not found.")
+            return await status_msg.edit("- Message not found.")
 
         messages = []
         if msg.grouped_id:
@@ -80,6 +84,10 @@ async def _(event):
             messages = sorted(messages, key=lambda x: x.id)
         else:
             messages = [msg]
+
+        def extract_caption(m):
+            txt = m.text or m.message
+            return txt if txt else "No caption"
 
         # Media group
         if any(m.media for m in messages) and len(messages) > 1:
@@ -105,7 +113,7 @@ async def _(event):
                 files.append(file)
 
             message_link = f"https://t.me/{channel_username}/{msg.id}"
-            caption = msg.text or msg.message or "No caption"
+            caption = extract_caption(msg)
             final_caption = (
                 f"Media group from [@{channel_username}]({message_link})\n"
                 f"Message ID: `{msg.id}`\n\n"
@@ -147,7 +155,7 @@ async def _(event):
                 media_type = "Audio"
                 file.name = "audio.mp3"
 
-            caption = m.text or m.message or "No caption"
+            caption = extract_caption(m)
             message_link = f"https://t.me/{channel_username}/{m.id}"
             final_caption = (
                 f"{media_type} from [@{channel_username}]({message_link})\n"
@@ -167,7 +175,7 @@ async def _(event):
             return await status_msg.delete()
 
         # Just text
-        caption = msg.text or msg.message or "No caption"
+        caption = extract_caption(msg)
         message_link = f"https://t.me/{channel_username}/{msg.id}"
         final_text = (
             f"Text from [@{channel_username}]({message_link})\n"
