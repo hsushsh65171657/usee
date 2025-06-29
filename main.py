@@ -53,24 +53,20 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #كود سحب نص من قنوات
 
-import re
-from io import BytesIO
-from telethon import events
-
 @client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
 async def _(event):
     match = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', event.pattern_match.group(1))
     if not match:
-        return await event.edit("- Invalid link format.")
+        return await event.edit("Invalid link format.")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
 
     try:
-        status_msg = await event.edit("- Downloading media from protected channel...")
+        status_msg = await event.edit("Downloading media from protected channel...")
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
-            return await status_msg.edit("- Message not found.")
+            return await status_msg.edit("Message not found.")
 
         messages = []
         if msg.grouped_id:
@@ -85,11 +81,16 @@ async def _(event):
         else:
             messages = [msg]
 
+        # 🧠 دالة استخراج الكابشن الحقيقية
         def extract_caption(m):
-            txt = m.text or m.message
-            return txt if txt else "No caption"
+            raw_text = m.text or m.message
+            if isinstance(raw_text, str):
+                return raw_text.strip() if raw_text.strip() else "No caption"
+            elif isinstance(raw_text, tuple):
+                return raw_text[0].strip() if raw_text and isinstance(raw_text[0], str) and raw_text[0].strip() else "No caption"
+            return "No caption"
 
-        # Media group
+        # 📦 Media group
         if any(m.media for m in messages) and len(messages) > 1:
             files = []
             for m in messages:
@@ -131,7 +132,7 @@ async def _(event):
             )
             return await status_msg.delete()
 
-        # Single media
+        # 🖼️ Single media
         for m in messages:
             if not m.media:
                 continue
@@ -174,7 +175,7 @@ async def _(event):
             )
             return await status_msg.delete()
 
-        # Just text
+        # 💬 Just text
         caption = extract_caption(msg)
         message_link = f"https://t.me/{channel_username}/{msg.id}"
         final_text = (
