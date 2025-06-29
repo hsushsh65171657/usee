@@ -52,78 +52,95 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #كود سحب نص من قنوات
-@client.on(events.NewMessage(pattern=r"\.سحب\s+(https://t\.me/[^/]+/\d+)"))
-async def fetch_message(event):
-    link = event.pattern_match.group(1)
-    match = re.match(r"https://t\.me/([^/]+)/(\d+)", link)
+
+@client.on(events.NewMessage(pattern=r'\.سحب (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
+async def _(event):
+    match = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', event.pattern_match.group(1))
     if not match:
-        return await event.edit("❌ الرابط مو مضبوط")
+        return await event.edit("❌ رابط غير صالح")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
 
     try:
-        status_msg = await event.edit("📥 ده احمّل الرسالة...")
-
+        status_msg = await event.edit("🔄 جاري السحب ...")
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
-            return await status_msg.edit("❌ ما لكيت الرسالة")
+            return await status_msg.edit("❌ ما لگيت الرسالة")
 
-        message_link = f"https://t.me/{channel_username}/{msg_id}"
-        caption = msg.text or msg.message or ""
-        caption = str(caption).strip()
+        # إذا الرسالة جزء من ألبوم
+        messages = []
+        if msg.grouped_id:
+            messages = await client.get_messages(channel_username, ids=None, min_id=msg_id - 20, max_id=msg_id + 20)
+            messages = [m for m in messages if m.grouped_id == msg.grouped_id]
+            messages = sorted(messages, key=lambda x: x.id)
+        else:
+            messages = [msg]
 
-        # إذا بيها ميديا
-        if msg.media:
-    file = BytesIO()
-    file.name = "file"
-    await client.download_media(msg, file=file)
-    file.seek(0)
+        for m in messages:
+            if not m.media:
+                continue
 
-    media_type = "ميديا"
-    if msg.photo:
-        media_type = "صورة"
-        file.name = "image.jpg"
-    elif msg.video:
-        media_type = "فيديو"
-        file.name = "video.mp4"
-    elif msg.document:
-        media_type = "ملف"
-        file.name = msg.file.name or "file"
-    elif msg.audio:
-        media_type = "صوت"
-        file.name = "audio.mp3"
+            file = BytesIO()
+            file.name = "file"
+            await client.download_media(m, file=file)
+            file.seek(0)
 
-    final_caption = (
-        f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
-        f"\n🆔 رقم الرسالة: `{msg_id}`"
-    )
-    if caption:
-        final_caption += f"\n\n📝 التعليق:\n{caption}"
+            # نوع الميديا
+            media_type = "ميديا"
+            if m.photo:
+                media_type = "صورة"
+                file.name = "image.jpg"
+            elif m.video:
+                media_type = "فيديو"
+                file.name = "video.mp4"
+            elif m.document:
+                media_type = "ملف"
+                file.name = m.file.name or "file"
+            elif m.audio:
+                media_type = "صوت"
+                file.name = "audio.mp3"
 
-    await client.send_file(
-        event.chat_id,
-        file,
-        caption=final_caption,
-        parse_mode="md",
-        link_preview=False,
-        force_document=False,         # ضروري حتى يندز كـ فيديو
-        supports_streaming=True       # يخلي الفيديو يشتغل مباشر
-    )
+            # نص أو تعليق
+            caption = m.text or m.message or ""
+            caption = str(caption).strip()
 
-        elif caption:
-            await client.send_message(
+            message_link = f"https://t.me/{channel_username}/{m.id}"
+            final_caption = (
+                f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
+                f"\n🆔 رقم الرسالة: `{m.id}`"
+            )
+            if caption:
+                final_caption += f"\n\n📝 التعليق:\n{caption}"
+
+            await client.send_file(
                 event.chat_id,
-                f"📝 تم سحب نص من [@{channel_username}]({message_link})"
-                f"\n🆔 رقم الرسالة: `{msg_id}`\n\n{caption}",
+                file,
+                caption=final_caption,
                 parse_mode="md",
-                link_preview=False
+                link_preview=False,
+                force_document=False,
+                supports_streaming=True
             )
 
         await status_msg.delete()
 
+        # إذا بس نص وما بيه ميديا
+        if not any(m.media for m in messages):
+            caption = msg.text or msg.message or ""
+            caption = str(caption).strip()
+            message_link = f"https://t.me/{channel_username}/{msg.id}"
+            final_text = (
+                f"✅ تم سحب نص من [@{channel_username}]({message_link})"
+                f"\n🆔 رقم الرسالة: `{msg.id}`"
+            )
+            if caption:
+                final_text += f"\n\n📝 النص:\n{caption}"
+
+            await status_msg.edit(final_text, link_preview=False)
+
     except Exception as e:
-        await event.edit(f"❌ صار خطأ:\n`{e}`")
+        await event.edit(f"❌ صار خطأ:\n{e}")
 
 #كود كتم
 
