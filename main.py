@@ -52,21 +52,19 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تخزين تيست
+
 MUTED_FILE = "muted.json"
 
-# تحميل بيانات الكتم
 def load_muted():
     if not os.path.exists(MUTED_FILE):
         return {}
     with open(MUTED_FILE, "r") as f:
         return json.load(f)
 
-# حفظ بيانات الكتم
 def save_muted(data):
     with open(MUTED_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# إضافة مستخدم لقائمة الكتم في شات معين
 def mute_user(chat_id, user_id):
     data = load_muted()
     chat_id = str(chat_id)
@@ -78,7 +76,6 @@ def mute_user(chat_id, user_id):
         return True
     return False
 
-# إزالة مستخدم من قائمة الكتم في شات معين
 def unmute_user(chat_id, user_id):
     data = load_muted()
     chat_id = str(chat_id)
@@ -90,57 +87,83 @@ def unmute_user(chat_id, user_id):
         return True
     return False
 
-# جلب قائمة المكتومين في الشات
 def get_muted(chat_id):
     data = load_muted()
     return data.get(str(chat_id), [])
 
-# أمر كتم: الرد على رسالة مستخدم
-@client.on(events.NewMessage(pattern=r"\.mute$", func=lambda e: e.is_reply))
+
+# .mute (reply, user ID, or username)
+@client.on(events.NewMessage(pattern=r"\.mute(?:\s+(.+))?"))
 async def mute_handler(event):
     chat_id = event.chat_id
-    reply = await event.get_reply_message()
-    user_id = reply.sender_id
+    arg = event.pattern_match.group(1)
+    user_id = None
+
+    if arg:
+        try:
+            entity = await event.client.get_entity(arg)
+            user_id = entity.id
+        except Exception as e:
+            return await event.edit(f"- Invalid user or ID.\n`{e}`")
+    elif event.is_reply:
+        reply = await event.get_reply_message()
+        user_id = reply.sender_id
+    else:
+        return await event.edit("- Please reply to a message or provide a user ID or @username.")
 
     if mute_user(chat_id, user_id):
-        await event.edit(f"🔇 المستخدم [{user_id}](tg://user?id={user_id}) تم كتمه هنا.")
+        await event.edit(f"- User [ID: {user_id}](tg://user?id={user_id}) has been muted in this chat.")
     else:
-        await event.edit("⚠️ المستخدم مكتوم من قبل.")
+        await event.edit("- User is already muted in this chat.")
 
-# أمر فك الكتم: الرد على رسالة مستخدم
-@client.on(events.NewMessage(pattern=r"\.unmute$", func=lambda e: e.is_reply))
+
+# .unmute (reply, user ID, or username)
+@client.on(events.NewMessage(pattern=r"\.unmute(?:\s+(.+))?"))
 async def unmute_handler(event):
     chat_id = event.chat_id
-    reply = await event.get_reply_message()
-    user_id = reply.sender_id
+    arg = event.pattern_match.group(1)
+    user_id = None
+
+    if arg:
+        try:
+            entity = await event.client.get_entity(arg)
+            user_id = entity.id
+        except Exception as e:
+            return await event.edit(f"- Invalid user or ID.\n`{e}`")
+    elif event.is_reply:
+        reply = await event.get_reply_message()
+        user_id = reply.sender_id
+    else:
+        return await event.edit("- Please reply to a message or provide a user ID or @username.")
 
     if unmute_user(chat_id, user_id):
-        await event.edit(f"🔊 تم رفع الكتم عن المستخدم [{user_id}](tg://user?id={user_id}).")
+        await event.edit(f"- User [ID: {user_id}](tg://user?id={user_id}) has been unmuted.")
     else:
-        await event.edit("⚠️ المستخدم غير مكتوم.")
+        await event.edit("- User is not muted in this chat.")
 
-# أمر عرض المكتومين في الشات الحالي
+
+# .muted
 @client.on(events.NewMessage(pattern=r"\.muted$"))
 async def show_muted(event):
     chat_id = event.chat_id
     muted_list = get_muted(chat_id)
 
     if not muted_list:
-        await event.edit("🚫 لا يوجد مستخدمين مكتومين هنا.")
-        return
+        return await event.edit("- No muted users in this chat.")
 
-    msg = "🔇 قائمة المكتومين في هذا الشات:\n"
+    msg = "🔇 Muted users in this chat:\n\n"
     for user_id in muted_list:
         try:
             user = await event.client.get_entity(user_id)
-            username = f"@{user.username}" if user.username else user.first_name
-            msg += f"- {username} ([{user_id}](tg://user?id={user_id}))\n"
+            name = f"@{user.username}" if user.username else user.first_name
+            msg += f"- {name} ([{user_id}](tg://user?id={user_id}))\n"
         except:
-            msg += f"- مستخدم [{user_id}](tg://user?id={user_id})\n"
+            msg += f"- [Unknown User] ({user_id})\n"
 
     await event.edit(msg)
 
-# مراقبة الرسائل لمسح رسائل المكتومين
+
+# Delete messages from muted users
 @client.on(events.NewMessage())
 async def delete_muted_messages(event):
     chat_id = event.chat_id
@@ -150,9 +173,9 @@ async def delete_muted_messages(event):
     if sender_id in muted_list:
         try:
             await event.delete()
-            print(f"Deleted message from muted user {sender_id} in chat {chat_id}")
+            print(f"[Muted] Deleted message from {sender_id} in chat {chat_id}")
         except Exception as e:
-            print(f"Failed to delete message in chat {chat_id}: {e}")
+            print(f"❌ Failed to delete message: {e}")
 #تحديث
 
 iraq_timezone = pytz.timezone("Asia/Baghdad")
