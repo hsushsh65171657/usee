@@ -53,30 +53,77 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #كود سحب نص من قنوات
 
-@client.on(events.NewMessage(pattern=r'\.سحب (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
+@client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
 async def _(event):
     match = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', event.pattern_match.group(1))
     if not match:
-        return await event.edit("❌ رابط غير صالح")
+        return await event.edit("Invalid link format.")
 
     channel_username = match.group(1)
     msg_id = int(match.group(2))
 
     try:
-        status_msg = await event.edit("🔄 جاري السحب ...")
+        status_msg = await event.edit("Fetching message...")
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
-            return await status_msg.edit("❌ ما لگيت الرسالة")
+            return await status_msg.edit("Message not found.")
 
-        # إذا الرسالة جزء من ألبوم
         messages = []
         if msg.grouped_id:
-            messages = await client.get_messages(channel_username, ids=None, min_id=msg_id - 20, max_id=msg_id + 20)
+            messages = await client.get_messages(
+                channel_username,
+                ids=None,
+                min_id=msg_id - 20,
+                max_id=msg_id + 20
+            )
             messages = [m for m in messages if m.grouped_id == msg.grouped_id]
             messages = sorted(messages, key=lambda x: x.id)
         else:
             messages = [msg]
 
+        # Media group
+        if any(m.media for m in messages) and len(messages) > 1:
+            files = []
+            for m in messages:
+                if not m.media:
+                    continue
+
+                file = BytesIO()
+                file.name = "file"
+                await client.download_media(m, file=file)
+                file.seek(0)
+
+                if m.photo:
+                    file.name = "image.jpg"
+                elif m.video:
+                    file.name = "video.mp4"
+                elif m.document:
+                    file.name = m.file.name or "file"
+                elif m.audio:
+                    file.name = "audio.mp3"
+
+                files.append(file)
+
+            message_link = f"https://t.me/{channel_username}/{msg.id}"
+            caption = msg.text or msg.message or "No caption"
+            final_caption = (
+                f"Media group from [@{channel_username}]({message_link})\n"
+                f"Message ID: `{msg.id}`\n\n"
+                f"Caption:\n{caption}"
+            )
+
+            await client.send_file(
+                event.chat_id,
+                files,
+                caption=final_caption,
+                parse_mode="md",
+                link_preview=False,
+                force_document=False,
+                supports_streaming=True
+            )
+            return await status_msg.delete()
+
+        # Single media
         for m in messages:
             if not m.media:
                 continue
@@ -86,32 +133,27 @@ async def _(event):
             await client.download_media(m, file=file)
             file.seek(0)
 
-            # نوع الميديا
-            media_type = "ميديا"
+            media_type = "Media"
             if m.photo:
-                media_type = "صورة"
+                media_type = "Image"
                 file.name = "image.jpg"
             elif m.video:
-                media_type = "فيديو"
+                media_type = "Video"
                 file.name = "video.mp4"
             elif m.document:
-                media_type = "ملف"
+                media_type = "Document"
                 file.name = m.file.name or "file"
             elif m.audio:
-                media_type = "صوت"
+                media_type = "Audio"
                 file.name = "audio.mp3"
 
-            # نص أو تعليق
-            caption = m.text or m.message or ""
-            caption = str(caption).strip()
-
+            caption = m.text or m.message or "No caption"
             message_link = f"https://t.me/{channel_username}/{m.id}"
             final_caption = (
-                f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
-                f"\n🆔 رقم الرسالة: `{m.id}`"
+                f"{media_type} from [@{channel_username}]({message_link})\n"
+                f"Message ID: `{m.id}`\n\n"
+                f"Caption:\n{caption}"
             )
-            if caption:
-                final_caption += f"\n\n📝 التعليق:\n{caption}"
 
             await client.send_file(
                 event.chat_id,
@@ -122,25 +164,20 @@ async def _(event):
                 force_document=False,
                 supports_streaming=True
             )
+            return await status_msg.delete()
 
-        await status_msg.delete()
-
-        # إذا بس نص وما بيه ميديا
-        if not any(m.media for m in messages):
-            caption = msg.text or msg.message or ""
-            caption = str(caption).strip()
-            message_link = f"https://t.me/{channel_username}/{msg.id}"
-            final_text = (
-                f"✅ تم سحب نص من [@{channel_username}]({message_link})"
-                f"\n🆔 رقم الرسالة: `{msg.id}`"
-            )
-            if caption:
-                final_text += f"\n\n📝 النص:\n{caption}"
-
-            await status_msg.edit(final_text, link_preview=False)
+        # Just text
+        caption = msg.text or msg.message or "No caption"
+        message_link = f"https://t.me/{channel_username}/{msg.id}"
+        final_text = (
+            f"Text from [@{channel_username}]({message_link})\n"
+            f"Message ID: `{msg.id}`\n\n"
+            f"Content:\n{caption}"
+        )
+        await status_msg.edit(final_text, link_preview=False)
 
     except Exception as e:
-        await event.edit(f"❌ صار خطأ:\n{e}")
+        await event.edit(f"Error occurred:\n`{e}`")
 
 #كود كتم
 
