@@ -52,55 +52,103 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تخزين تيست
+MUTED_FILE = "muted.json"
 
-FILTER_FILE = "filters.json"
+# تحميل بيانات الكتم
+def load_muted():
+    if not os.path.exists(MUTED_FILE):
+        return {}
+    with open(MUTED_FILE, "r") as f:
+        return json.load(f)
 
-# تحميل الكلمات من الملف
-def load_filters():
-    if not os.path.exists(FILTER_FILE):
-        return []
-    with open(FILTER_FILE, "r") as f:
-        data = json.load(f)
-        return data.get("filters", [])
+# حفظ بيانات الكتم
+def save_muted(data):
+    with open(MUTED_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
-# حفظ الكلمات إلى الملف
-def save_filters(words):
-    with open(FILTER_FILE, "w") as f:
-        json.dump({"filters": words}, f, indent=4)
+# إضافة مستخدم لقائمة الكتم في شات معين
+def mute_user(chat_id, user_id):
+    data = load_muted()
+    chat_id = str(chat_id)
+    if chat_id not in data:
+        data[chat_id] = []
+    if user_id not in data[chat_id]:
+        data[chat_id].append(user_id)
+        save_muted(data)
+        return True
+    return False
 
-# أمر: .اضف <كلمة>
-@client.on(events.NewMessage(pattern=r"\.اضف (.+)"))
-async def add_word(event):
-    word = event.pattern_match.group(1).strip()
-    filters = load_filters()
-    if word in filters:
-        await event.edit(f"✅ الكلمة '{word}' موجودة مسبقًا.")
-        return
-    filters.append(word)
-    save_filters(filters)
-    await event.edit(f"✅ تمت إضافة الكلمة: `{word}`")
+# إزالة مستخدم من قائمة الكتم في شات معين
+def unmute_user(chat_id, user_id):
+    data = load_muted()
+    chat_id = str(chat_id)
+    if chat_id in data and user_id in data[chat_id]:
+        data[chat_id].remove(user_id)
+        if not data[chat_id]:
+            del data[chat_id]
+        save_muted(data)
+        return True
+    return False
 
-# أمر: .كلماتي
-@client.on(events.NewMessage(pattern=r"\.كلماتي"))
-async def show_words(event):
-    filters = load_filters()
-    if not filters:
-        await event.edit("📭 لا توجد كلمات مخزنة.")
+# جلب قائمة المكتومين في الشات
+def get_muted(chat_id):
+    data = load_muted()
+    return data.get(str(chat_id), [])
+
+# أمر كتم: الرد على رسالة مستخدم
+@client.on(events.NewMessage(pattern=r"\.mute$", func=lambda e: e.is_reply))
+async def mute_handler(event):
+    chat_id = event.chat_id
+    reply = await event.get_reply_message()
+    user_id = reply.sender_id
+
+    if mute_user(chat_id, user_id):
+        await event.edit(f"🔇 المستخدم [{user_id}](tg://user?id={user_id}) تم كتمه هنا.")
     else:
-        msg = "📚 الكلمات المخزنة:\n- " + "\n- ".join(filters)
-        await event.edit(msg)
+        await event.edit("⚠️ المستخدم مكتوم من قبل.")
 
-# أمر: .احذف <كلمة>
-@client.on(events.NewMessage(pattern=r"\.احذف (.+)"))
-async def delete_word(event):
-    word = event.pattern_match.group(1).strip()
-    filters = load_filters()
-    if word not in filters:
-        await event.edit(f"❌ الكلمة '{word}' غير موجودة.")
+# أمر فك الكتم: الرد على رسالة مستخدم
+@client.on(events.NewMessage(pattern=r"\.unmute$", func=lambda e: e.is_reply))
+async def unmute_handler(event):
+    chat_id = event.chat_id
+    reply = await event.get_reply_message()
+    user_id = reply.sender_id
+
+    if unmute_user(chat_id, user_id):
+        await event.edit(f"🔊 تم رفع الكتم عن المستخدم [{user_id}](tg://user?id={user_id}).")
+    else:
+        await event.edit("⚠️ المستخدم غير مكتوم.")
+
+# أمر عرض المكتومين في الشات الحالي
+@client.on(events.NewMessage(pattern=r"\.muted$"))
+async def show_muted(event):
+    chat_id = event.chat_id
+    muted_list = get_muted(chat_id)
+my
+    if not muted_list:
+        await event.edit("🚫 لا يوجد مستخدمين مكتومين هنا.")
         return
-    filters.remove(word)
-    save_filters(filters)
-    await event.edit(f"🗑️ تم حذف الكلمة: `{word}`")
+
+    msg = "🔇 قائمة المكتومين في هذا الشات:\n"
+    for user_id in muted_list:
+        try:
+            user = await event.client.get_entity(user_id)
+            username = f"@{user.username}" if user.username else user.first_name
+            msg += f"- {username} ([{user_id}](tg://user?id={user_id}))\n"
+        except:
+            msg += f"- مستخدم [{user_id}](tg://user?id={user_id})\n"
+
+    await event.edit(msg)
+
+# مراقبة الرسائل لمسح رسائل المكتومين
+@client.on(events.NewMessage())
+async def delete_muted_messages(event):
+    chat_id = event.chat_id
+    sender_id = event.sender_id
+    muted_list = get_muted(chat_id)
+
+    if sender_id in muted_list:
+        await event.delete()
 #تحديث
 
 iraq_timezone = pytz.timezone("Asia/Baghdad")
