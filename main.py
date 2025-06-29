@@ -15,7 +15,7 @@ from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon import events
 import requests
-import io
+from io import BytesIO
 from telethon.extensions import markdown
 from telethon import types
 from telethon.tl.types import MessageEntityCustomEmoji
@@ -75,39 +75,41 @@ async def fetch_message(event):
 
         # إذا بيها ميديا
         if msg.media:
-            file = BytesIO()
-            file.name = "file"
-            await client.download_media(msg, file=file)
-            file.seek(0)
+    file = BytesIO()
+    file.name = "file"
+    await client.download_media(msg, file=file)
+    file.seek(0)
 
-            media_type = "ميديا"
-            if msg.photo:
-                media_type = "صورة"
-                file.name = "image.jpg"
-            elif msg.video:
-                media_type = "فيديو"
-                file.name = "video.mp4"
-            elif msg.document:
-                media_type = "ملف"
-                file.name = msg.file.name or "file"
-            elif msg.audio:
-                media_type = "صوت"
-                file.name = "audio.mp3"
+    media_type = "ميديا"
+    if msg.photo:
+        media_type = "صورة"
+        file.name = "image.jpg"
+    elif msg.video:
+        media_type = "فيديو"
+        file.name = "video.mp4"
+    elif msg.document:
+        media_type = "ملف"
+        file.name = msg.file.name or "file"
+    elif msg.audio:
+        media_type = "صوت"
+        file.name = "audio.mp3"
 
-            final_caption = (
-                f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
-                f"\n🆔 رقم الرسالة: `{msg_id}`"
-            )
-            if caption:
-                final_caption += f"\n\n📝 التعليق:\n{caption}"
+    final_caption = (
+        f"✅ تم سحب {media_type} من [@{channel_username}]({message_link})"
+        f"\n🆔 رقم الرسالة: `{msg_id}`"
+    )
+    if caption:
+        final_caption += f"\n\n📝 التعليق:\n{caption}"
 
-            await client.send_file(
-                event.chat_id,
-                file,
-                caption=final_caption,
-                parse_mode="md",
-                link_preview=False
-            )
+    await client.send_file(
+        event.chat_id,
+        file,
+        caption=final_caption,
+        parse_mode="md",
+        link_preview=False,
+        force_document=False,         # ضروري حتى يندز كـ فيديو
+        supports_streaming=True       # يخلي الفيديو يشتغل مباشر
+    )
 
         elif caption:
             await client.send_message(
