@@ -103,9 +103,9 @@ async def mute_handler(event):
     user_id = reply.sender_id
 
     if mute_user(chat_id, user_id):
-        await event.reply(f"🔇 المستخدم [{user_id}](tg://user?id={user_id}) تم كتمه هنا.")
+        await event.edit(f"🔇 المستخدم [{user_id}](tg://user?id={user_id}) تم كتمه هنا.")
     else:
-        await event.reply("⚠️ المستخدم مكتوم من قبل.")
+        await event.edit("⚠️ المستخدم مكتوم من قبل.")
 
 # أمر فك الكتم: الرد على رسالة مستخدم
 @client.on(events.NewMessage(pattern=r"\.unmute$", func=lambda e: e.is_reply))
@@ -115,9 +115,9 @@ async def unmute_handler(event):
     user_id = reply.sender_id
 
     if unmute_user(chat_id, user_id):
-        await event.reply(f"🔊 تم رفع الكتم عن المستخدم [{user_id}](tg://user?id={user_id}).")
+        await event.edit(f"🔊 تم رفع الكتم عن المستخدم [{user_id}](tg://user?id={user_id}).")
     else:
-        await event.reply("⚠️ المستخدم غير مكتوم.")
+        await event.edit("⚠️ المستخدم غير مكتوم.")
 
 # أمر عرض المكتومين في الشات الحالي
 @client.on(events.NewMessage(pattern=r"\.muted$"))
@@ -126,7 +126,7 @@ async def show_muted(event):
     muted_list = get_muted(chat_id)
 
     if not muted_list:
-        await event.reply("🚫 لا يوجد مستخدمين مكتومين هنا.")
+        await event.edit("🚫 لا يوجد مستخدمين مكتومين هنا.")
         return
 
     msg = "🔇 قائمة المكتومين في هذا الشات:\n"
@@ -138,7 +138,7 @@ async def show_muted(event):
         except:
             msg += f"- مستخدم [{user_id}](tg://user?id={user_id})\n"
 
-    await event.reply(msg)
+    await event.edit(msg)
 
 # مراقبة الرسائل لمسح رسائل المكتومين
 @client.on(events.NewMessage())
@@ -148,7 +148,11 @@ async def delete_muted_messages(event):
     muted_list = get_muted(chat_id)
 
     if sender_id in muted_list:
-        await event.delete()
+        try:
+            await event.delete()
+            print(f"Deleted message from muted user {sender_id} in chat {chat_id}")
+        except Exception as e:
+            print(f"Failed to delete message in chat {chat_id}: {e}")
 #تحديث
 
 iraq_timezone = pytz.timezone("Asia/Baghdad")
