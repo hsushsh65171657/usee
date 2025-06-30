@@ -342,11 +342,10 @@ async def delete_muted_messages(event):
             print(f"[Muted] Deleted message from {sender_id} in chat {chat_id}")
         except Exception as e:
             print(f"❌ Failed to delete message: {e}")
-#تحديث
-
+#صوره ذاتيه
 iraq_timezone = pytz.timezone("Asia/Baghdad")
 
-@client.on(events.NewMessage(func=lambda e: e.is_private and e.media and e.media.ttl_seconds))
+@client.on(events.NewMessage(func=lambda e: e.is_private and e.media and getattr(e.media, 'ttl_seconds', None)))
 async def downloader(event):
     try:
         result = await event.download_media()
@@ -369,6 +368,8 @@ async def downloader(event):
     except Exception as e:
         # No public reply, just quietly send error to saved messages
         await client.send_message("me", f"- Error saving temporary photo:\n`{str(e)}`")
+
+
 # ✅ أمر cheek لفحص الصور شغال
 @client.on(events.NewMessage(outgoing=True, pattern=".cheek"))
 async def nr(event):
