@@ -52,34 +52,18 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تيست
-@client.on(events.NewMessage(pattern=r'^\.ايديه$'))
-async def forwarded_user_info(event):
-    reply = await event.get_reply_message()
 
-    if not reply or not reply.forward:
-        await event.reply("⚠️ لازم ترد على رسالة *محولة* حتى أطلعلك معلومات الشخص.")
-        return
+@client.on(events.NewMessage(pattern=r"\.mycount"))
+async def count_my_messages(event):
+    await event.edit("⌛ جاري الحساب...")
 
-    fwd = reply.forward
+    me = await client.get_me()
+    count = 0
 
-    if fwd.sender_id:
-        try:
-            sender = await client.get_entity(fwd.sender_id)
-            name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
-            username = f"@{sender.username}" if sender.username else "ما عنده يوزر"
+    async for msg in client.iter_messages(event.chat_id, from_user=me.id):
+        count += 1
 
-            msg = f"""👤 معلومات الشخص المحول من عنده:
-
-📛 الاسم: {name}
-🆔 الآيدي: `{sender.id}`
-🔗 اليوزر: {username}"""
-            await event.reply(msg)
-
-        except Exception as e:
-            await event.reply(f"🚫 صار خطأ وأنا دا أحاول أجيب المعلومات:\n`{str(e)}`")
-
-    else:
-        await event.reply("🚫 ما أگدر أجيب الآيدي – الشخص مخلي خصوصية على التحويلات.\n\n😅 حاول تمسك أعصابك.")
+    await event.edit(f"📨 عدد رسائلك هنا: {count}")
 #كود سحب نص من قنوات
 
 @client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
