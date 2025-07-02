@@ -51,11 +51,35 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 # ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
+#الابديت
+@client.on(events.NewMessage(pattern=r"\.json"))
+async def show_json(event):
+    reply = await event.get_reply_message()
+    target_message = reply if reply else event.message  # إذا أكو رد، نجيب الرسالة المردود عليها، إذا ماكو نستخدم الرسالة الحالية
+
+    if not target_message:
+        await event.reply("❌ ماكو رسالة أرد عليها.")
+        return
+
+    try:
+        # نستخدم to_dict لتحويل الرسالة إلى dict ثم ننسقها
+        raw = target_message.to_dict()
+        formatted = json.dumps(raw, indent=4, ensure_ascii=False)
+        if len(formatted) > 4096:
+            # إذا أطول من 4096 حرف، نرسلها كملف
+            with open("update.json", "w", encoding="utf-8") as f:
+                f.write(formatted)
+            await client.send_file(event.chat_id, "update.json", caption="📦 هذه بيانات الرسالة بصيغة JSON")
+            os.remove("update.json")
+        else:
+            await event.reply(f"📦 هذه بيانات الرسالة:\n\n<code>{formatted}</code>", parse_mode="html")
+    except Exception as e:
+        await event.reply(f"❌ خطأ أثناء جلب الـ JSON:\n<code>{str(e)}</code>", parse_mode="html")
 #تيست
 
 @client.on(events.NewMessage(pattern=r"\.mycount"))
 async def count_my_messages(event):
-    await event.edit("⌛ جاري الحساب...")
+    await event.edit("- ⌛ جاري الحساب...")
 
     me = await client.get_me()
     count = 0
@@ -63,7 +87,7 @@ async def count_my_messages(event):
     async for msg in client.iter_messages(event.chat_id, from_user=me.id):
         count += 1
 
-    await event.edit(f"📨 عدد رسائلك هنا: {count}")
+    await event.edit(f"- عدد رسائلك هنا: {count}")
 #كود سحب نص من قنوات
 
 @client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
