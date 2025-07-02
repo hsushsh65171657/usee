@@ -52,21 +52,31 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #الابديت
+
+
+# دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
+def custom_serializer(obj):
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    if isinstance(obj, bytes):
+        return obj.decode(errors='ignore')
+    return str(obj)
+
 @client.on(events.NewMessage(pattern=r"\.json"))
 async def show_json(event):
     reply = await event.get_reply_message()
-    target_message = reply if reply else event.message  # إذا أكو رد، نجيب الرسالة المردود عليها، إذا ماكو نستخدم الرسالة الحالية
+    target_message = reply if reply else event.message
 
     if not target_message:
         await event.reply("❌ ماكو رسالة أرد عليها.")
         return
 
     try:
-        # نستخدم to_dict لتحويل الرسالة إلى dict ثم ننسقها
+        # تحويل الرسالة إلى dict مع معالجة datetime وغيرها
         raw = target_message.to_dict()
-        formatted = json.dumps(raw, indent=4, ensure_ascii=False)
+        formatted = json.dumps(raw, indent=4, ensure_ascii=False, default=custom_serializer)
+
         if len(formatted) > 4096:
-            # إذا أطول من 4096 حرف، نرسلها كملف
             with open("update.json", "w", encoding="utf-8") as f:
                 f.write(formatted)
             await client.send_file(event.chat_id, "update.json", caption="📦 هذه بيانات الرسالة بصيغة JSON")
