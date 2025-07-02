@@ -56,10 +56,17 @@ client.parse_mode = CustomMarkdown()
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
 def custom_serializer(obj):
+    import datetime
+
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
     if isinstance(obj, bytes):
-        return obj.decode(errors='ignore')
+        try:
+            # نحاول نفكّه كنص UTF-8
+            return obj.decode('utf-8')
+        except:
+            # إذا ما نكدر نفكّه، نرجعه كـ list أرقام
+            return list(obj)
     return str(obj)
 
 @client.on(events.NewMessage(pattern=r"\.json"))
