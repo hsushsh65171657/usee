@@ -92,11 +92,64 @@ async def show_json(event):
             await event.reply(f"📦 هذه بيانات الرسالة:\n\n<code>{formatted}</code>", parse_mode="html")
     except Exception as e:
         await event.reply(f"❌ خطأ أثناء جلب الـ JSON:\n<code>{str(e)}</code>", parse_mode="html")
+#تحويل
+TARGET_GROUP = -1002833881470  # مثال
+
+OWNER_ID = 6099048919
+
+@client.on(events.NewMessage(incoming=True))
+async def notify_owner_mentions_and_replies(event):
+    if event.is_group and not event.sender.bot:
+        try:
+            sender = await event.get_sender()
+            chat = await event.get_chat()
+
+            user_name = sender.first_name or "No Name"
+            user_mention = f"[{user_name}](tg://user?id={sender.id})"
+
+            group_link = f"https://t.me/{chat.username}" if chat.username else "Private Group"
+            group_name = chat.title or "No Title"
+
+            # رابط الرسالة
+            msg_link = f"https://t.me/{chat.username}/{event.id}" if chat.username else "No Message Link"
+            time = event.message.date.strftime("%Y-%m-%d %H:%M:%S")
+
+            reason = []
+
+            # تحقق من المنشن الموجه إليك
+            if event.message.entities:
+                for entity in event.message.entities:
+                    if hasattr(entity, 'user_id') and entity.user_id == OWNER_ID:
+                        reason.append("🏷️ Mention")
+                        break
+
+            # تحقق من الرد على رسالتك
+            if event.reply_to and event.reply_to.reply_to_msg_id:
+                replied_msg = await event.get_reply_message()
+                if replied_msg and replied_msg.sender_id == OWNER_ID:
+                    reason.append("💬 Reply")
+
+            if reason:
+                reason_text = " + ".join(reason)
+                msg = f"""
+📥 **New Interaction Detected!**
+
+📌 Type: {reason_text}
+
+👤 From: {user_mention}  
+🏷️ Group: [{group_name}]({group_link})  
+🔗 Message: [Click to View]({msg_link})  
+🕰️ Time: `{time}`
+"""
+                await client.send_message(TARGET_GROUP, msg.strip(), link_preview=False)
+
+        except Exception as e:
+            print(f"خطأ أثناء إشعار المنشن أو الرد: {e}")
 #تيست
 
 @client.on(events.NewMessage(pattern=r"\.mycount"))
 async def count_my_messages(event):
-    await event.edit("- ⌛ جاري الحساب...")
+    await event.edit("- جاري الحساب...")
 
     me = await client.get_me()
     count = 0
@@ -676,7 +729,6 @@ async def convert_to_sticker(event):
 
     except Exception as e:
         await event.edit(f"Error converting to sticker:\n`{e}`")
-
 
 client.start()
 print("⚡ Bot is running...")
