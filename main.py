@@ -656,22 +656,23 @@ from io import BytesIO
 async def convert_to_sticker(event):
     reply = await event.get_reply_message()
     if not reply or not reply.photo:
-        return await event.edit("Please reply to an image to convert it to a sticker.")
+        return await event.edit("Reply to an image to convert it to a sticker.")
 
     try:
         img = BytesIO()
-        img.name = "sticker.png"
+        img.name = "sticker.webp"  # مهم جداً: الاسم لازم يكون .webp حتى يعتبره ستيكر
         await client.download_media(reply.photo, file=img)
         img.seek(0)
 
         await client.send_file(
             event.chat_id,
             img,
-            force_document=False,
             reply_to=reply.id,
-            stickers=True  # يخلي الصورة تتحول ستيكر تلقائياً
+            force_document=False,
+            allow_cache=False
         )
-        await event.delete()  # يحذف الأمر بعد الإرسال
+
+        await event.delete()
 
     except Exception as e:
         await event.edit(f"Error converting to sticker:\n`{e}`")
