@@ -4,6 +4,7 @@ import yt_dlp
 import asyncio
 import re
 import random
+from PIL import Image
 import time
 import json
 import datetime
@@ -648,7 +649,30 @@ async def youtube_audio(event):
 
     except Exception as e:
         await msg.edit(f"- Error:\n`{str(e)}`")
+#تحويل الصوره الى ستيكر
+@client.on(events.NewMessage(pattern=r'^\.sticker$'))
+async def photo_to_sticker(event):
+    # Check if the replied message has a photo
+    reply = await event.get_reply_message()
+    if not reply or not reply.photo:
+        await event.reply("Please reply to a photo with the command.")
+        return
     
+    # Download the photo
+    file = await reply.download_media(bytes)
+    img = Image.open(io.BytesIO(file))
+
+    # Resize the image to sticker size 512x512
+    img = img.resize((512, 512))
+    
+    output = io.BytesIO()
+    img.save(output, format='PNG')
+    output.seek(0)
+
+    # Send the sticker
+    await event.respond(file=output, force_document=False, as_sticker=True)
+
+
 client.start()
 print("⚡ Bot is running...")
 client.run_until_disconnected()
