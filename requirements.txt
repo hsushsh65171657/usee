@@ -1,7 +1,6 @@
 telethon
 psutil
 pytz
-pillow
 requests
 yt-dlp
 lyricsgenius
