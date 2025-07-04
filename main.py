@@ -4,8 +4,6 @@ import yt_dlp
 import asyncio
 import re
 import random
-import io
-from PIL import Image
 import time
 import json
 import datetime
@@ -651,27 +649,32 @@ async def youtube_audio(event):
     except Exception as e:
         await msg.edit(f"- Error:\n`{str(e)}`")
 #تحويل الصوره الى ستيكر
-@client.on(events.NewMessage(pattern=r'^\.sticker$'))
-async def photo_to_sticker(event):
-    # Check if the replied message has a photo
+from telethon import events
+from io import BytesIO
+
+@client.on(events.NewMessage(pattern=r'\.sticker$', outgoing=True))
+async def convert_to_sticker(event):
     reply = await event.get_reply_message()
     if not reply or not reply.photo:
-        await event.reply("Please reply to a photo with the command.")
-        return
-    
-    # Download the photo
-    file = await reply.download_media(bytes)
-    img = Image.open(io.BytesIO(file))
+        return await event.edit("Please reply to an image to convert it to a sticker.")
 
-    # Resize the image to sticker size 512x512
-    img = img.resize((512, 512))
-    
-    output = io.BytesIO()
-    img.save(output, format='PNG')
-    output.seek(0)
+    try:
+        img = BytesIO()
+        img.name = "sticker.png"
+        await client.download_media(reply.photo, file=img)
+        img.seek(0)
 
-    # Send the sticker
-    await event.respond(file=output, force_document=False, as_sticker=True)
+        await client.send_file(
+            event.chat_id,
+            img,
+            force_document=False,
+            reply_to=reply.id,
+            stickers=True  # يخلي الصورة تتحول ستيكر تلقائياً
+        )
+        await event.delete()  # يحذف الأمر بعد الإرسال
+
+    except Exception as e:
+        await event.edit(f"Error converting to sticker:\n`{e}`")
 
 
 client.start()
