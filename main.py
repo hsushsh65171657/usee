@@ -4,6 +4,7 @@ import yt_dlp
 import asyncio
 import re
 import random
+import io
 from PIL import Image
 import time
 import json
