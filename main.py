@@ -93,45 +93,46 @@ async def show_json(event):
     except Exception as e:
         await event.reply(f"❌ خطأ أثناء جلب الـ JSON:\n<code>{str(e)}</code>", parse_mode="html")
 #تحويل
-TARGET_GROUP = -1002833881470  # مثال
-
-OWNER_ID = 6099048919
+TARGET_GROUP = -1002833881470  # غروب التنبيهات
+OWNER_ID = 6099048919  # معرفك الشخصي
 
 @client.on(events.NewMessage(incoming=True))
 async def notify_owner_mentions_and_replies(event):
-    if event.is_group and not event.sender.bot:
-        try:
-            sender = await event.get_sender()
-            chat = await event.get_chat()
+    if not event.is_group:
+        return
 
+    try:
+        sender = await event.get_sender()
+        if not sender or sender.bot or sender.id == OWNER_ID:
+            return  # تجاهل البوتات و الرسائل من نفسك
+
+        chat = await event.get_chat()
+        reason = []
+
+        # تحقق من المنشن الموجه إليك
+        if event.message.entities:
+            for entity in event.message.entities:
+                if hasattr(entity, 'user_id') and entity.user_id == OWNER_ID:
+                    reason.append("🏷️ Mention")
+                    break
+
+        # تحقق من الرد على رسالتك
+        if event.is_reply:
+            replied_msg = await event.get_reply_message()
+            if replied_msg and replied_msg.sender_id == OWNER_ID:
+                reason.append("💬 Reply")
+
+        # إذا في سبب، سوي الإشعار
+        if reason:
             user_name = sender.first_name or "No Name"
             user_mention = f"[{user_name}](tg://user?id={sender.id})"
-
             group_link = f"https://t.me/{chat.username}" if chat.username else "Private Group"
             group_name = chat.title or "No Title"
-
-            # رابط الرسالة
             msg_link = f"https://t.me/{chat.username}/{event.id}" if chat.username else "No Message Link"
             time = event.message.date.strftime("%Y-%m-%d %H:%M:%S")
+            reason_text = " + ".join(reason)
 
-            reason = []
-
-            # تحقق من المنشن الموجه إليك
-            if event.message.entities:
-                for entity in event.message.entities:
-                    if hasattr(entity, 'user_id') and entity.user_id == OWNER_ID:
-                        reason.append("🏷️ Mention")
-                        break
-
-            # تحقق من الرد على رسالتك
-            if event.reply_to and event.reply_to.reply_to_msg_id:
-                replied_msg = await event.get_reply_message()
-                if replied_msg and replied_msg.sender_id == OWNER_ID:
-                    reason.append("💬 Reply")
-
-            if reason:
-                reason_text = " + ".join(reason)
-                msg = f"""
+            msg = f"""
 📥 **New Interaction Detected!**
 
 📌 Type: {reason_text}
@@ -141,10 +142,10 @@ async def notify_owner_mentions_and_replies(event):
 🔗 Message: [Click to View]({msg_link})  
 🕰️ Time: `{time}`
 """
-                await client.send_message(TARGET_GROUP, msg.strip(), link_preview=False)
+            await client.send_message(TARGET_GROUP, msg.strip(), link_preview=False)
 
-        except Exception as e:
-            print(f"خطأ أثناء إشعار المنشن أو الرد: {e}")
+    except Exception as e:
+        print(f"خطأ أثناء إشعار المنشن أو الرد: {e}")
 #تيست
 
 @client.on(events.NewMessage(pattern=r"\.mycount"))
