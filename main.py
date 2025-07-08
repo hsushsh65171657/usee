@@ -1,3 +1,5 @@
+import aiohttp
+from TikTokApi import TikTokApi
 import os
 import lyricsgenius
 import yt_dlp
@@ -51,8 +53,54 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 # ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
-#الابديت
+#تحميل تيك توك
 
+@client.on(events.NewMessage(pattern=r"\.تيك (.+)"))
+async def tiktok_downloader(event):
+    url = event.pattern_match.group(1)
+    msg = await event.respond("🔍 جاري التحميل من TikTok...")
+
+    try:
+        async with TikTokApi() as api:
+            video = await api.video(url=url)
+            video_bytes = await video.bytes()
+            description = (await video.info())['desc']  # الكابشن مال الفيديو
+
+            # إذا فيديو
+            if video_bytes:
+                await client.send_file(
+                    event.chat_id,
+                    video_bytes,
+                    caption=f"🎬 تم التحميل من TikTok:\n\n{description}"
+                )
+                await msg.delete()
+                return
+
+            # إذا صور
+            post = await api.post(url=url)
+            images = await post.images
+            description = post.as_dict.get("desc", "لا يوجد وصف")
+
+            if images:
+                files = []
+                for img in images:
+                    img_bytes = await img.bytes()
+                    files.append(img_bytes)
+
+                await client.send_file(
+                    event.chat_id,
+                    files,
+                    caption=f"🖼️ صور من TikTok:\n\n{description}",
+                    force_document=False
+                )
+                await msg.delete()
+                return
+
+        await msg.edit("❌ ما تم التعرف على نوع المحتوى.")
+
+    except Exception as e:
+        await msg.edit(f"❌ صار خطأ:\n`{str(e)}`")
+#الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
 def custom_serializer(obj):
