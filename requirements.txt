@@ -5,4 +5,4 @@ requests
 yt-dlp
 lyricsgenius
 aiohttp
-beautifulsoup4
+
