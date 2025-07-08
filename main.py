@@ -20,7 +20,6 @@ from io import BytesIO
 from telethon.extensions import markdown
 from telethon import types
 from telethon.tl.types import MessageEntityCustomEmoji
-from telethon.tl.types import InputMediaPhotoExternal, InputMediaVideoExternal
 
 #  كلاس خاص للماركداون
 class CustomMarkdown:
