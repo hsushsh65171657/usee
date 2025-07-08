@@ -54,41 +54,30 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
 
+
 @client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
-async def tiktok_download(event):
+async def tiktok_downloader(event):
     url = event.pattern_match.group(1)
-    await event.reply("⏳ جاري التحميل من TikTok...")
+    await event.reply("🔍 جاري تحميل الفيديو...")
 
     try:
         async with aiohttp.ClientSession() as session:
-            api_url = f"https://api.tikwm.com/video/info?url={url}"
-            async with session.get(api_url) as resp:
-                data = await resp.json()
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
 
-        if not data.get("data"):
-            return await event.reply("❌ ما كدرت أجيب الفيديو، الرابط ممكن غلط أو الفيديو خاص.")
+            async with session.get(f"https://tikmate.online/download?url={url}", headers=headers) as resp:
+                page = await resp.text()
 
-        result = data["data"]
-        caption = result.get("title", "لا يوجد وصف")
-        media_type = result.get("type")
-
-        if media_type == "video":
-            video_url = result["play"]
-            await client.send_file(event.chat_id, video_url, caption=f"🎬 {caption}")
-
-        elif media_type == "image":
-            images = result.get("images")
-            if images:
-                media_group = [InputMediaPhotoExternal(url) for url in images]
-                await client.send_file(event.chat_id, file=media_group, caption=f"🖼️ {caption}")
+            match = re.search(r'https://tikmatecdn\.com/[^"]+\.mp4', page)
+            if match:
+                download_link = match.group(0)
+                await client.send_file(event.chat_id, download_link, caption="✅ تم تحميل الفيديو بنجاح")
             else:
-                await event.reply("❌ فشل في جلب الصور.")
-
-        else:
-            await event.reply("❌ نوع المحتوى غير مدعوم.")
+                await event.reply("❌ فشل تحميل الفيديو، جرّب رابط ثاني أو بعد شوي.")
 
     except Exception as e:
-        await event.reply(f"❌ خطأ أثناء التحميل:\n`{str(e)}`")
+        await event.reply(f"❌ صار خطأ:\n`{str(e)}`")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
