@@ -1,5 +1,4 @@
 import aiohttp
-from bs4 import BeautifulSoup
 import os
 import lyricsgenius
 import yt_dlp
@@ -21,6 +20,7 @@ from io import BytesIO
 from telethon.extensions import markdown
 from telethon import types
 from telethon.tl.types import MessageEntityCustomEmoji
+from telethon.tl.types import InputMediaPhotoExternal, InputMediaVideoExternal
 
 #  كلاس خاص للماركداون
 class CustomMarkdown:
@@ -54,33 +54,42 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
+
 @client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
-async def tiktok_downloader(event):
+async def tiktok_download(event):
     url = event.pattern_match.group(1)
     await event.reply("⏳ جاري التحميل من TikTok...")
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://ssstik.io/en") as resp:
-                text = await resp.text()
-                soup = BeautifulSoup(text, "html.parser")
-                token = soup.find("input", {"id": "token"})["value"]
+            api_url = f"https://api.tikwm.com/video/info?url={url}"
+            async with session.get(api_url) as resp:
+                data = await resp.json()
 
-            payload = {
-                "id": url,
-                "locale": "en",
-                "tt": token
-            }
+        if not data.get("data"):
+            return await event.reply("❌ ما كدرت أجيب الفيديو، الرابط ممكن غلط أو الفيديو خاص.")
 
-            async with session.post("https://ssstik.io/abc", data=payload) as resp:
-                html = await resp.text()
-                soup = BeautifulSoup(html, "html.parser")
-                video_url = soup.a["href"]
+        result = data["data"]
+        caption = result.get("title", "لا يوجد وصف")
+        media_type = result.get("type")
 
-            await client.send_file(event.chat_id, video_url, caption="✅ تم التحميل من TikTok")
+        if media_type == "video":
+            video_url = result["play"]
+            await client.send_file(event.chat_id, video_url, caption=f"🎬 {caption}")
+
+        elif media_type == "image":
+            images = result.get("images")
+            if images:
+                media_group = [InputMediaPhotoExternal(url) for url in images]
+                await client.send_file(event.chat_id, file=media_group, caption=f"🖼️ {caption}")
+            else:
+                await event.reply("❌ فشل في جلب الصور.")
+
+        else:
+            await event.reply("❌ نوع المحتوى غير مدعوم.")
 
     except Exception as e:
-        await event.reply(f"❌ فشل التحميل:\n`{str(e)}`")
+        await event.reply(f"❌ خطأ أثناء التحميل:\n`{str(e)}`")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
