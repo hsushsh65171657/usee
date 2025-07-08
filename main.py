@@ -58,17 +58,15 @@ client.parse_mode = CustomMarkdown()
 
 import aiohttp
 from io import BytesIO
-import re
 from telethon import events
 
-TIKTOK_REGEX = r"(https?://)?(www\.)?tiktok\.com/.+|https://vm\.tiktok\.com/\w+"
-
-@client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
+@client.on(events.NewMessage(pattern=r"\.تيك\s+(https?://[^\s]+)"))
 async def tiktok_handler(event):
     url = event.pattern_match.group(1).strip()
 
-    if not re.match(TIKTOK_REGEX, url):
-        return await event.edit("❌ الرابط مو رابط TikTok صحيح.")
+    # تأكد أن الرابط يحتوي على tiktok
+    if "tiktok.com" not in url and "vm.tiktok.com" not in url:
+        return await event.edit("❌ هذا مو رابط تيك توك.")
 
     msg = await event.edit("🔄 جاري المعالجة...")
 
@@ -78,7 +76,7 @@ async def tiktok_handler(event):
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url) as resp:
                 if resp.status != 200:
-                    return await msg.edit("❌ فشل بالاتصال مع API.")
+                    return await msg.edit("❌ فشل الاتصال بموقع التحميل.")
                 data = await resp.json()
 
         if not data.get("data"):
@@ -87,7 +85,7 @@ async def tiktok_handler(event):
         tiktok_data = data["data"]
         caption = tiktok_data.get("title") or "لا يوجد وصف"
 
-        # صور (Media Group)
+        # صور
         if tiktok_data.get("images"):
             files = []
             async with aiohttp.ClientSession() as session:
@@ -110,7 +108,6 @@ async def tiktok_handler(event):
         # فيديو
         elif tiktok_data.get("play"):
             video_url = tiktok_data["play"]
-
             async with aiohttp.ClientSession() as session:
                 async with session.get(video_url) as vid_resp:
                     vid_data = await vid_resp.read()
@@ -127,7 +124,7 @@ async def tiktok_handler(event):
             return await msg.delete()
 
         else:
-            return await msg.edit("❌ هذا المنشور ما بي لا صور ولا فيديو.")
+            return await msg.edit("❌ المنشور ما يحتوي على فيديو أو صور.")
 
     except Exception as e:
         return await msg.edit(f"❌ صار خطأ: {e}")
