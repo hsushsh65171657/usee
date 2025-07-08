@@ -55,41 +55,55 @@ client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
 
 
-@client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
-async def download_tiktok(event):
+import aiohttp
+from telethon import events
+from telethon.tl.types import InputMediaPhoto
+import json
+
+@client.on(events.NewMessage(pattern=r"\.تيك\s+(https?://[^\s]+)"))
+async def tiktok_handler(event):
     url = event.pattern_match.group(1)
-    await event.reply("⏳ جاري معالجة رابط TikTok...")
+    await event.reply("🔄 جاري المعالجة...")
 
     try:
+        api = f"https://tikwm.com/api/?url={url}"
+
         async with aiohttp.ClientSession() as session:
-            # Step 1: Send initial request to get token
-            headers = {
-                'User-Agent': 'Mozilla/5.0'
-            }
-            async with session.get("https://ttdownloader.com/", headers=headers) as resp:
-                html = await resp.text()
-                token = re.search(r'name="token" value="(.*?)"', html).group(1)
+            async with session.get(api) as resp:
+                if resp.status != 200:
+                    return await event.reply("❌ فشل في الاتصال بالموقع.")
+                data = await resp.json()
 
-            # Step 2: Submit form with the TikTok URL
-            data = {
-                "url": url,
-                "format": "",
-                "token": token
-            }
-            async with session.post("https://ttdownloader.com/req/", headers=headers, data=data) as resp:
-                result = await resp.text()
+        if not data.get("data"):
+            return await event.reply("❌ الرابط غير صالح أو فشل في جلب البيانات.")
 
-            # Step 3: Extract download links
-            no_watermark = re.search(r'href="(https://[^"]+)"[^>]*>Without watermark', result)
-            caption_match = re.search(r'<input type="text" class="form-control" id="video-title"[^>]*value="(.*?)"', result)
+        result = data["data"]
+        caption = result.get("title", "لا يوجد وصف")
 
-            video_url = no_watermark.group(1) if no_watermark else None
-            caption = caption_match.group(1) if caption_match else "بدون وصف"
+        # في حال فيديو
+        if result.get("play"):
+            video_url = result["play"]
+            await client.send_file(
+                event.chat_id,
+                video_url,
+                caption=f"🎬 {caption}"
+            )
+            return
 
-            if video_url:
-                await client.send_file(event.chat_id, video_url, caption=f"🎬 {caption}")
-            else:
-                await event.reply("❌ ما كدرت ألقى رابط تحميل، جرّب غير رابط.")
+        # في حال صور متعددة
+        if result.get("images"):
+            images = result["images"]
+            media = [InputMediaPhoto(image) for image in images]
+
+            await client.send_message(
+                event.chat_id,
+                file=media,
+                message=f"🖼️ {caption}"
+            )
+            return
+
+        # fallback
+        await event.reply("❌ لم يتم التعرف على نوع المحتوى.")
 
     except Exception as e:
         await event.reply(f"❌ صار خطأ:\n`{str(e)}`")
