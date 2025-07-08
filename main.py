@@ -56,25 +56,40 @@ client.parse_mode = CustomMarkdown()
 
 
 @client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
-async def tiktok_downloader(event):
+async def download_tiktok(event):
     url = event.pattern_match.group(1)
-    await event.reply("🔍 جاري تحميل الفيديو...")
+    await event.reply("⏳ جاري معالجة رابط TikTok...")
 
     try:
         async with aiohttp.ClientSession() as session:
+            # Step 1: Send initial request to get token
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                'User-Agent': 'Mozilla/5.0'
             }
+            async with session.get("https://ttdownloader.com/", headers=headers) as resp:
+                html = await resp.text()
+                token = re.search(r'name="token" value="(.*?)"', html).group(1)
 
-            async with session.get(f"https://tikmate.online/download?url={url}", headers=headers) as resp:
-                page = await resp.text()
+            # Step 2: Submit form with the TikTok URL
+            data = {
+                "url": url,
+                "format": "",
+                "token": token
+            }
+            async with session.post("https://ttdownloader.com/req/", headers=headers, data=data) as resp:
+                result = await resp.text()
 
-            match = re.search(r'https://tikmatecdn\.com/[^"]+\.mp4', page)
-            if match:
-                download_link = match.group(0)
-                await client.send_file(event.chat_id, download_link, caption="✅ تم تحميل الفيديو بنجاح")
+            # Step 3: Extract download links
+            no_watermark = re.search(r'href="(https://[^"]+)"[^>]*>Without watermark', result)
+            caption_match = re.search(r'<input type="text" class="form-control" id="video-title"[^>]*value="(.*?)"', result)
+
+            video_url = no_watermark.group(1) if no_watermark else None
+            caption = caption_match.group(1) if caption_match else "بدون وصف"
+
+            if video_url:
+                await client.send_file(event.chat_id, video_url, caption=f"🎬 {caption}")
             else:
-                await event.reply("❌ فشل تحميل الفيديو، جرّب رابط ثاني أو بعد شوي.")
+                await event.reply("❌ ما كدرت ألقى رابط تحميل، جرّب غير رابط.")
 
     except Exception as e:
         await event.reply(f"❌ صار خطأ:\n`{str(e)}`")
