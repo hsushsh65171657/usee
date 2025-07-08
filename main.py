@@ -1,5 +1,5 @@
 import aiohttp
-from TikTokApi import TikTokApi
+from bs4 import BeautifulSoup
 import os
 import lyricsgenius
 import yt_dlp
@@ -54,52 +54,33 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
-
-@client.on(events.NewMessage(pattern=r"\.تيك (.+)"))
+@client.on(events.NewMessage(pattern=r"\.تيك (https?://[^\s]+)"))
 async def tiktok_downloader(event):
     url = event.pattern_match.group(1)
-    msg = await event.respond("🔍 جاري التحميل من TikTok...")
+    await event.reply("⏳ جاري التحميل من TikTok...")
 
     try:
-        async with TikTokApi() as api:
-            video = await api.video(url=url)
-            video_bytes = await video.bytes()
-            description = (await video.info())['desc']  # الكابشن مال الفيديو
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://ssstik.io/en") as resp:
+                text = await resp.text()
+                soup = BeautifulSoup(text, "html.parser")
+                token = soup.find("input", {"id": "token"})["value"]
 
-            # إذا فيديو
-            if video_bytes:
-                await client.send_file(
-                    event.chat_id,
-                    video_bytes,
-                    caption=f"🎬 تم التحميل من TikTok:\n\n{description}"
-                )
-                await msg.delete()
-                return
+            payload = {
+                "id": url,
+                "locale": "en",
+                "tt": token
+            }
 
-            # إذا صور
-            post = await api.post(url=url)
-            images = await post.images
-            description = post.as_dict.get("desc", "لا يوجد وصف")
+            async with session.post("https://ssstik.io/abc", data=payload) as resp:
+                html = await resp.text()
+                soup = BeautifulSoup(html, "html.parser")
+                video_url = soup.a["href"]
 
-            if images:
-                files = []
-                for img in images:
-                    img_bytes = await img.bytes()
-                    files.append(img_bytes)
-
-                await client.send_file(
-                    event.chat_id,
-                    files,
-                    caption=f"🖼️ صور من TikTok:\n\n{description}",
-                    force_document=False
-                )
-                await msg.delete()
-                return
-
-        await msg.edit("❌ ما تم التعرف على نوع المحتوى.")
+            await client.send_file(event.chat_id, video_url, caption="✅ تم التحميل من TikTok")
 
     except Exception as e:
-        await msg.edit(f"❌ صار خطأ:\n`{str(e)}`")
+        await event.reply(f"❌ فشل التحميل:\n`{str(e)}`")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
