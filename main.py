@@ -55,78 +55,75 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
 
-import re
-import aiohttp
-import asyncio
-import os
-from telethon import events
-from telethon.tl.types import DocumentAttributeFilename
-from telethon.utils import get_input_media
-from datetime import datetime
-import tempfile
 
-@client.on(events.NewMessage(pattern=r'\.تيك(?:\s+|$)(https?://[^\s]+)?'))
+TIKTOK_REGEX = r"(https?://)?(www\.)?tiktok\.com/.+|https://vm\.tiktok\.com/\w+"
+
+@client.on(events.NewMessage(pattern=r"\.تيك (https?://(?:www\.)?(?:tiktok\.com|vm\.tiktok\.com)/\S+)"))
 async def tiktok_handler(event):
-    await event.edit("🔄 Processing TikTok link...")
+    url = event.pattern_match.group(1)
+    if not re.match(TIKTOK_REGEX, url):
+        return await event.reply("❌ الرابط غير صحيح لـ TikTok.")
 
-    url_match = re.search(r'(https?://[^\s]+)', event.raw_text)
-    if not url_match:
-        return await event.edit("❌ Please provide a valid TikTok link.")
+    await event.edit("⌛️ جاري معالجة رابط TikTok...")
 
-    url = url_match.group(1)
     api_url = f"https://tikwm.com/api/?url={url}"
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url) as resp:
-                if resp.status != 200:
-                    return await event.edit("❌ Failed to reach TikTok API.")
                 data = await resp.json()
 
-        if data.get("code") != 0:
-            return await event.edit("❌ Invalid or unsupported TikTok URL.")
+        if not data.get("data"):
+            return await event.edit("❌ فشل في جلب بيانات الفيديو.")
 
-        result = data["data"]
-        desc = result.get("title") or "No caption"
-        images = result.get("images")
-        video_url = result.get("play")
+        tiktok_data = data["data"]
+        caption = tiktok_data.get("title", "لا يوجد وصف")
 
-        if images:
+        # حذف تنظيف الكابشن من الإيموجيات هنا
+
+        # إذا في صور
+        if tiktok_data.get("images"):
             files = []
-            for img_url in images:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(img_url) as img_resp:
-                        if img_resp.status == 200:
-                            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-                            temp_file.write(await img_resp.read())
-                            temp_file.close()
-                            files.append(temp_file.name)
+            async with aiohttp.ClientSession() as session:
+                for img_url in tiktok_data["images"]:
+                    async with session.get(img_url) as resp:
+                        image_data = await resp.read()
+                        file = BytesIO(image_data)
+                        file.name = "photo.jpg"
+                        uploaded = await client.upload_file(file)
+                        files.append(uploaded)
 
             await client.send_file(
-                entity=event.chat_id,
-                file=files,
-                caption=f"🖼 TikTok Gallery\n\n{desc}",
-                reply_to=event.reply_to_msg_id
+                event.chat_id,
+                files,
+                caption=caption,
+                reply_to=event.id
             )
+            return await event.delete()
 
-            # حذف الملفات المؤقتة
-            for f in files:
-                os.unlink(f)
+        # إذا في فيديو
+        elif tiktok_data.get("play"):
+            video_url = tiktok_data["play"]
+            async with aiohttp.ClientSession() as session:
+                async with session.get(video_url) as resp:
+                    video_data = await resp.read()
 
-        elif video_url:
+            video_file = BytesIO(video_data)
+            video_file.name = "video.mp4"
+
             await client.send_file(
-                entity=event.chat_id,
-                file=video_url,
-                caption=f"🎥 TikTok Video\n\n{desc}",
-                reply_to=event.reply_to_msg_id
+                event.chat_id,
+                video_file,
+                caption=caption,
+                reply_to=event.id
             )
+            return await event.delete()
+
         else:
-            return await event.edit("❌ No media found in this TikTok post.")
-
-        await event.delete()
+            await event.edit("❌ هذا الفيديو لا يحتوي على ميديا.")
 
     except Exception as e:
-        await event.edit(f"❌ Error: {str(e)}")
+        await event.edit(f"❌ حدث خطأ: {str(e)}")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
