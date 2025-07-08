@@ -55,6 +55,16 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
 
+import re
+import aiohttp
+import asyncio
+import os
+from telethon import events
+from telethon.tl.types import DocumentAttributeFilename
+from telethon.utils import get_input_media
+from datetime import datetime
+import tempfile
+
 @client.on(events.NewMessage(pattern=r'\.تيك(?:\s+|$)(https?://[^\s]+)?'))
 async def tiktok_handler(event):
     await event.edit("🔄 Processing TikTok link...")
@@ -64,8 +74,8 @@ async def tiktok_handler(event):
         return await event.edit("❌ Please provide a valid TikTok link.")
 
     url = url_match.group(1)
-
     api_url = f"https://tikwm.com/api/?url={url}"
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url) as resp:
@@ -82,15 +92,27 @@ async def tiktok_handler(event):
         video_url = result.get("play")
 
         if images:
-            media = []
+            files = []
             for img_url in images:
-                media.append(InputMediaPhoto(img_url))
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(img_url) as img_resp:
+                        if img_resp.status == 200:
+                            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                            temp_file.write(await img_resp.read())
+                            temp_file.close()
+                            files.append(temp_file.name)
+
             await client.send_file(
                 entity=event.chat_id,
-                file=media,
+                file=files,
                 caption=f"🖼 TikTok Gallery\n\n{desc}",
                 reply_to=event.reply_to_msg_id
             )
+
+            # حذف الملفات المؤقتة
+            for f in files:
+                os.unlink(f)
+
         elif video_url:
             await client.send_file(
                 entity=event.chat_id,
