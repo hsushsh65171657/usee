@@ -58,76 +58,68 @@ client.parse_mode = CustomMarkdown()
 
 import aiohttp
 from io import BytesIO
+import re
 from telethon import events
 
-@client.on(events.NewMessage(pattern=r"\.تيك\s+(https?://[^\s]+)"))
+TIKTOK_REGEX = r"(https?://)?(www\.)?tiktok\.com/.+|https://vm\.tiktok\.com/\w+"
+
+@client.on(events.NewMessage(pattern=r"https?://(?:www\.)?(?:tiktok\.com|vm\.tiktok\.com)/\S+"))
 async def tiktok_handler(event):
-    url = event.pattern_match.group(1).strip()
+    link = re.search(TIKTOK_REGEX, event.raw_text)
+    if not link:
+        return await event.edit("❌ This is not a valid TikTok link.")
 
-    # تأكد أن الرابط يحتوي على tiktok
-    if "tiktok.com" not in url and "vm.tiktok.com" not in url:
-        return await event.edit("❌ هذا مو رابط تيك توك.")
+    msg = await event.edit("🔄 Processing TikTok link...")
 
-    msg = await event.edit("🔄 جاري المعالجة...")
-
+    url = link.group(0).strip()
     api_url = f"https://tikwm.com/api/?url={url}"
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url) as resp:
-                if resp.status != 200:
-                    return await msg.edit("❌ فشل الاتصال بموقع التحميل.")
                 data = await resp.json()
 
         if not data.get("data"):
-            return await msg.edit("❌ ما لكيت ميديا بهذا الرابط.")
+            return await msg.edit("❌ Failed to fetch data from TikTok.")
 
         tiktok_data = data["data"]
-        caption = tiktok_data.get("title") or "لا يوجد وصف"
+        caption = tiktok_data.get("title", "No caption")
 
-        # صور
+        # إذا يحتوي على صور
         if tiktok_data.get("images"):
             files = []
             async with aiohttp.ClientSession() as session:
                 for img_url in tiktok_data["images"]:
-                    async with session.get(img_url) as img_resp:
-                        img_data = await img_resp.read()
-                        img_file = BytesIO(img_data)
-                        img_file.name = "photo.jpg"
-                        uploaded = await client.upload_file(img_file)
+                    async with session.get(img_url) as resp:
+                        image_data = await resp.read()
+                        file = BytesIO(image_data)
+                        file.name = "photo.jpg"
+                        uploaded = await client.upload_file(file)
                         files.append(uploaded)
+
+            message_text = f"✅ Downloaded successfully.\n\nCaption: {caption}"
 
             await client.send_file(
                 event.chat_id,
                 files,
-                caption=caption,
+                caption=message_text,
                 reply_to=event.reply_to_msg_id
             )
             return await msg.delete()
 
-        # فيديو
+        # إذا يحتوي على فيديو
         elif tiktok_data.get("play"):
             video_url = tiktok_data["play"]
-            async with aiohttp.ClientSession() as session:
-                async with session.get(video_url) as vid_resp:
-                    vid_data = await vid_resp.read()
+            message_text = f"✅ Video link fetched successfully.\n\n🎬 [Click here to watch the video]({video_url})\n\nCaption: {caption}"
 
-            video_file = BytesIO(vid_data)
-            video_file.name = "video.mp4"
-
-            await client.send_file(
-                event.chat_id,
-                video_file,
-                caption=caption,
-                reply_to=event.reply_to_msg_id
-            )
-            return await msg.delete()
+            await msg.edit(message_text, link_preview=False)
+            return
 
         else:
-            return await msg.edit("❌ المنشور ما يحتوي على فيديو أو صور.")
+            return await msg.edit("❌ No media found in this TikTok post.")
 
     except Exception as e:
-        return await msg.edit(f"❌ صار خطأ: {e}")
+        return await msg.edit(f"❌ Error: {str(e)}")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
