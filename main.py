@@ -54,59 +54,56 @@ client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
 #تحميل تيك توك
 
-
-import aiohttp
-from telethon import events
-from telethon.tl.types import InputMediaPhoto
-import json
-
-@client.on(events.NewMessage(pattern=r"\.تيك\s+(https?://[^\s]+)"))
+@client.on(events.NewMessage(pattern=r'\.تيك(?:\s+|$)(https?://[^\s]+)?'))
 async def tiktok_handler(event):
-    url = event.pattern_match.group(1)
-    await event.reply("🔄 جاري المعالجة...")
+    await event.edit("🔄 Processing TikTok link...")
 
+    url_match = re.search(r'(https?://[^\s]+)', event.raw_text)
+    if not url_match:
+        return await event.edit("❌ Please provide a valid TikTok link.")
+
+    url = url_match.group(1)
+
+    api_url = f"https://tikwm.com/api/?url={url}"
     try:
-        api = f"https://tikwm.com/api/?url={url}"
-
         async with aiohttp.ClientSession() as session:
-            async with session.get(api) as resp:
+            async with session.get(api_url) as resp:
                 if resp.status != 200:
-                    return await event.reply("❌ فشل في الاتصال بالموقع.")
+                    return await event.edit("❌ Failed to reach TikTok API.")
                 data = await resp.json()
 
-        if not data.get("data"):
-            return await event.reply("❌ الرابط غير صالح أو فشل في جلب البيانات.")
+        if data.get("code") != 0:
+            return await event.edit("❌ Invalid or unsupported TikTok URL.")
 
         result = data["data"]
-        caption = result.get("title", "لا يوجد وصف")
+        desc = result.get("title") or "No caption"
+        images = result.get("images")
+        video_url = result.get("play")
 
-        # في حال فيديو
-        if result.get("play"):
-            video_url = result["play"]
+        if images:
+            media = []
+            for img_url in images:
+                media.append(InputMediaPhoto(img_url))
             await client.send_file(
-                event.chat_id,
-                video_url,
-                caption=f"🎬 {caption}"
-            )
-            return
-
-        # في حال صور متعددة
-        if result.get("images"):
-            images = result["images"]
-            media = [InputMediaPhoto(image) for image in images]
-
-            await client.send_message(
-                event.chat_id,
+                entity=event.chat_id,
                 file=media,
-                message=f"🖼️ {caption}"
+                caption=f"🖼 TikTok Gallery\n\n{desc}",
+                reply_to=event.reply_to_msg_id
             )
-            return
+        elif video_url:
+            await client.send_file(
+                entity=event.chat_id,
+                file=video_url,
+                caption=f"🎥 TikTok Video\n\n{desc}",
+                reply_to=event.reply_to_msg_id
+            )
+        else:
+            return await event.edit("❌ No media found in this TikTok post.")
 
-        # fallback
-        await event.reply("❌ لم يتم التعرف على نوع المحتوى.")
+        await event.delete()
 
     except Exception as e:
-        await event.reply(f"❌ صار خطأ:\n`{str(e)}`")
+        await event.edit(f"❌ Error: {str(e)}")
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
