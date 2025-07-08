@@ -1,6 +1,8 @@
 telethon
 psutil
 pytz
+aiohttp
+TikTokApi
 requests
 yt-dlp
 lyricsgenius
