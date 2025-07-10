@@ -259,6 +259,19 @@ async def _(event):
         if not msg:
             return await status_msg.edit("Message not found.")
 
+        # 🧠 استخراج معلومات المرسل إذا كانت الرسالة من كروب
+        sender_info = ""
+        try:
+            if msg.chat and not msg.chat.broadcast:  # broadcast = قناة
+                sender = await msg.get_sender()
+                if sender:
+                    full_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+                    username = f"@{sender.username}" if sender.username else "No username"
+                    user_link = f"[{full_name}](tg://user?id={sender.id})"
+                    sender_info = f"\n👤 Sender: {user_link} ({username})"
+        except:
+            sender_info = "\n👤 Sender: Unknown"
+
         messages = []
         if msg.grouped_id:
             messages = await client.get_messages(
@@ -272,7 +285,6 @@ async def _(event):
         else:
             messages = [msg]
 
-        # 🧠 دالة استخراج الكابشن الحقيقية
         def extract_caption(m):
             raw_text = m.text or m.message
             if isinstance(raw_text, str):
@@ -281,7 +293,6 @@ async def _(event):
                 return raw_text[0].strip() if raw_text and isinstance(raw_text[0], str) and raw_text[0].strip() else "No caption"
             return "No caption"
 
-        # 📦 Media group
         if any(m.media for m in messages) and len(messages) > 1:
             files = []
             for m in messages:
@@ -309,7 +320,7 @@ async def _(event):
             final_caption = (
                 f"Media group from [@{channel_username}]({message_link})\n"
                 f"Message ID: `{msg.id}`\n\n"
-                f"Caption:\n{caption}"
+                f"Caption:\n{caption}{sender_info}"
             )
 
             await client.send_file(
@@ -323,7 +334,6 @@ async def _(event):
             )
             return await status_msg.delete()
 
-        # 🖼️ Single media
         for m in messages:
             if not m.media:
                 continue
@@ -352,7 +362,7 @@ async def _(event):
             final_caption = (
                 f"{media_type} from [@{channel_username}]({message_link})\n"
                 f"Message ID: `{m.id}`\n\n"
-                f"Caption:\n{caption}"
+                f"Caption:\n{caption}{sender_info}"
             )
 
             await client.send_file(
@@ -366,19 +376,17 @@ async def _(event):
             )
             return await status_msg.delete()
 
-        # 💬 Just text
         caption = extract_caption(msg)
         message_link = f"https://t.me/{channel_username}/{msg.id}"
         final_text = (
             f"Text from [@{channel_username}]({message_link})\n"
             f"Message ID: `{msg.id}`\n\n"
-            f"Content:\n{caption}"
+            f"Content:\n{caption}{sender_info}"
         )
         await status_msg.edit(final_text, link_preview=False)
 
     except Exception as e:
         await event.edit(f"Error occurred:\n`{e}`")
-
 #كود كتم
 
 MUTED_FILE = "muted.json"
