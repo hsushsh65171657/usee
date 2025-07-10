@@ -254,23 +254,10 @@ async def _(event):
     msg_id = int(match.group(2))
 
     try:
-        status_msg = await event.edit("Downloading media from protected channel...")
+        status_msg = await event.edit("Downloading media or content...")
         msg = await client.get_messages(channel_username, ids=msg_id)
         if not msg:
             return await status_msg.edit("Message not found.")
-
-        # 🧠 استخراج معلومات المرسل إذا كانت الرسالة من كروب
-        sender_info = ""
-        try:
-            if msg.chat and not msg.chat.broadcast:  # broadcast = قناة
-                sender = await msg.get_sender()
-                if sender:
-                    full_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
-                    username = f"@{sender.username}" if sender.username else "No username"
-                    user_link = f"[{full_name}](tg://user?id={sender.id})"
-                    sender_info = f"\n👤 Sender: {user_link} ({username})"
-        except:
-            sender_info = "\n👤 Sender: Unknown"
 
         messages = []
         if msg.grouped_id:
@@ -285,6 +272,7 @@ async def _(event):
         else:
             messages = [msg]
 
+        # 🧠 دالة استخراج الكابشن
         def extract_caption(m):
             raw_text = m.text or m.message
             if isinstance(raw_text, str):
@@ -293,12 +281,28 @@ async def _(event):
                 return raw_text[0].strip() if raw_text and isinstance(raw_text[0], str) and raw_text[0].strip() else "No caption"
             return "No caption"
 
+        # 🧠 دالة جلب معلومات المرسل
+        async def get_sender_info(m):
+            try:
+                if not m.sender_id:
+                    return "\n👤 Sender: Not available (channel post)"
+                sender = await m.get_sender()
+                if not sender:
+                    return ""
+                sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+                if sender.username:
+                    return f"\n👤 Sender: [{sender_name}](https://t.me/{sender.username})"
+                else:
+                    return f"\n👤 Sender: [{sender_name}](tg://user?id={sender.id})"
+            except Exception:
+                return ""
+
+        # 📦 Media group
         if any(m.media for m in messages) and len(messages) > 1:
             files = []
             for m in messages:
                 if not m.media:
                     continue
-
                 file = BytesIO()
                 file.name = "file"
                 await client.download_media(m, file=file)
@@ -315,8 +319,9 @@ async def _(event):
 
                 files.append(file)
 
-            message_link = f"https://t.me/{channel_username}/{msg.id}"
             caption = extract_caption(msg)
+            sender_info = await get_sender_info(msg)
+            message_link = f"https://t.me/{channel_username}/{msg.id}"
             final_caption = (
                 f"Media group from [@{channel_username}]({message_link})\n"
                 f"Message ID: `{msg.id}`\n\n"
@@ -334,49 +339,51 @@ async def _(event):
             )
             return await status_msg.delete()
 
+        # 🖼️ Single media
         for m in messages:
-            if not m.media:
-                continue
+            if m.media:
+                file = BytesIO()
+                file.name = "file"
+                await client.download_media(m, file=file)
+                file.seek(0)
 
-            file = BytesIO()
-            file.name = "file"
-            await client.download_media(m, file=file)
-            file.seek(0)
+                media_type = "Media"
+                if m.photo:
+                    media_type = "Image"
+                    file.name = "image.jpg"
+                elif m.video:
+                    media_type = "Video"
+                    file.name = "video.mp4"
+                elif m.document:
+                    media_type = "Document"
+                    file.name = m.file.name or "file"
+                elif m.audio:
+                    media_type = "Audio"
+                    file.name = "audio.mp3"
 
-            media_type = "Media"
-            if m.photo:
-                media_type = "Image"
-                file.name = "image.jpg"
-            elif m.video:
-                media_type = "Video"
-                file.name = "video.mp4"
-            elif m.document:
-                media_type = "Document"
-                file.name = m.file.name or "file"
-            elif m.audio:
-                media_type = "Audio"
-                file.name = "audio.mp3"
+                caption = extract_caption(m)
+                sender_info = await get_sender_info(m)
+                message_link = f"https://t.me/{channel_username}/{m.id}"
+                final_caption = (
+                    f"{media_type} from [@{channel_username}]({message_link})\n"
+                    f"Message ID: `{m.id}`\n\n"
+                    f"Caption:\n{caption}{sender_info}"
+                )
 
-            caption = extract_caption(m)
-            message_link = f"https://t.me/{channel_username}/{m.id}"
-            final_caption = (
-                f"{media_type} from [@{channel_username}]({message_link})\n"
-                f"Message ID: `{m.id}`\n\n"
-                f"Caption:\n{caption}{sender_info}"
-            )
+                await client.send_file(
+                    event.chat_id,
+                    file,
+                    caption=final_caption,
+                    parse_mode="md",
+                    link_preview=False,
+                    force_document=False,
+                    supports_streaming=True
+                )
+                return await status_msg.delete()
 
-            await client.send_file(
-                event.chat_id,
-                file,
-                caption=final_caption,
-                parse_mode="md",
-                link_preview=False,
-                force_document=False,
-                supports_streaming=True
-            )
-            return await status_msg.delete()
-
+        # 💬 Just text
         caption = extract_caption(msg)
+        sender_info = await get_sender_info(msg)
         message_link = f"https://t.me/{channel_username}/{msg.id}"
         final_text = (
             f"Text from [@{channel_username}]({message_link})\n"
