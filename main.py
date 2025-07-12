@@ -21,6 +21,8 @@ from telethon.extensions import markdown
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.types import InputMediaPhoto
 from telethon.tl.types import MessageEntityCustomEmoji
+from telethon.tl.types import Channel, Chat, ChatAdminRights
+from telethon import functions
 
 #  كلاس خاص للماركداون
 class CustomMarkdown:
@@ -135,6 +137,37 @@ async def tiktok_handler(event):
 
     except Exception as e:
         await msg.edit(f"- Error: {str(e)}")
+##
+@client.on(events.NewMessage(pattern=r'\.كروباتي', outgoing=True))
+async def _(event):
+    await event.edit("جاري جلب الكروبات الي انت منشئها...")
+
+    result = await client(functions.messages.GetDialogsRequest(
+        offset_date=None,
+        offset_id=0,
+        offset_peer='me',
+        limit=200,
+        hash=0
+    ))
+
+    owned_groups = []
+
+    for chat in result.chats:
+        # فقط الكروبات والقنوات القابلة للمراسلة
+        if isinstance(chat, (Channel, Chat)):
+            if getattr(chat, 'creator', False):
+                title = chat.title
+                if getattr(chat, 'username', None):
+                    link = f"https://t.me/{chat.username}"
+                else:
+                    link = f"[رابط خاص](https://t.me/c/{chat.id})"
+                owned_groups.append(f"- {title}\n  {link}")
+
+    if not owned_groups:
+        return await event.edit("ما عندك أي كروب أنت منشئه.")
+    
+    text = "**الكروبات الي انت منشئها:**\n\n" + "\n\n".join(owned_groups)
+    await event.edit(text, link_preview=False)
 #الابديت
 
 # دالة مخصصة لتحويل أنواع غير قابلة للتسلسل (مثل datetime)
