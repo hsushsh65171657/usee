@@ -558,26 +558,40 @@ iraq_timezone = pytz.timezone("Asia/Baghdad")
 @client.on(events.NewMessage(func=lambda e: e.is_private and e.media and getattr(e.media, 'ttl_seconds', None)))
 async def downloader(event):
     try:
-        result = await event.download_media()
-        if not result:
-            return  # If media can't be downloaded, silently ignore
+        # تحديد الامتداد حسب نوع الميديا
+        ext = "file"
+        if event.photo:
+            ext = "photo.jpg"
+        elif event.video:
+            ext = "video.mp4"
+        elif event.voice:
+            ext = "voice.ogg"
+        elif event.document and event.document.mime_type.startswith("audio/"):
+            ext = "audio.mp3"
 
+        # تحميل الملف
+        result = await event.download_media(file=ext)
+        if not result:
+            return  # ما نزل شي؟ تجاهل
+
+        # معلومات المُرسل
         sender = await event.get_sender()
         sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
         sender_username = f"@{sender.username}" if sender.username else f"`{sender.id}`"
         current_time = datetime.datetime.now(iraq_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
+        # الكابشن حسب نوع الملف
         caption = (
-            "📸 Temporary photo captured\n\n"
+            "📥 Temporary media received\n\n"
             f"👤 From: {sender_name} ({sender_username})\n"
             f"🕒 Time: {current_time}"
         )
 
+        # إرسال للرسائل المحفوظة
         await client.send_file("me", result, caption=caption)
 
     except Exception as e:
-        # No public reply, just quietly send error to saved messages
-        await client.send_message("me", f"- Error saving temporary photo:\n`{str(e)}`")
+        await client.send_message("me", f"- Error saving temporary media:\n`{str(e)}`")
 
 
 # ✅ أمر cheek لفحص الصور شغال
