@@ -55,6 +55,26 @@ string = "1BJWap1sAUHH9FdkXX5lUPPP5t8b7lIzFBzyqM2tKYTCDime77Z9VM6okPiIwii6e1IQ7S
 # ✅ إنشاء الجلسه
 client = TelegramClient(StringSession(string), api_id, api_hash)
 client.parse_mode = CustomMarkdown()
+@client.on(events.NewMessage(outgoing=True, pattern=".فشر"))
+async def stop_wkte(event):
+    rep = await event.get_reply_message()
+    global shd
+    shd = True
+    for s in open("sc.txt","r").read().split("\n"):
+     if shd == False:
+      break
+     await rep.reply(s)
+     
+async def send_to_all_groups(message):
+    async for dialog in client.iter_dialogs():
+        if dialog.is_group:
+            await client.send_message(dialog.id, message)
+
+@client.on(events.NewMessage(outgoing=True, pattern=".ايقاف"))
+async def stop_wkte(event):
+    global shd
+    shd = False
+    await event.edit("Done Stopped [✈️](emoji/5350711759625795085)")
 #تحميل تيك توك
 
 
