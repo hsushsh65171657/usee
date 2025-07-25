@@ -76,54 +76,63 @@ async def stop_wkte(event):
     shd = False
     await event.edit("Done Stopped [✈️](emoji/5350711759625795085)")
 #حذف ميديا
-from telethon.tl.types import MessageMediaPhoto
+from telethon import events
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.functions.messages import DeleteMessagesRequest
 
-@client.on(events.NewMessage(pattern=r'\.delmidia$'))
-async def delete_all_media(event):
+@client.on(events.NewMessage(pattern=r'^\.delmidia(?:user)?(?:\s+(.*))?', outgoing=True))
+async def del_media_handler(event):
     chat = await event.get_chat()
-    me = await client.get_me()
-    deleted = 0
-    await event.edit("🔍 Deleting all media...")
+    is_user_mode = event.pattern_match.group(0).startswith('.delmidiauser')
+    target_user = event.pattern_match.group(1)
 
-    async for msg in client.iter_messages(chat.id):
-        if msg.media and not msg.text:
+    if is_user_mode:
+        # تحديد المستخدم المطلوب
+        if event.is_reply:
+            reply = await event.get_reply_message()
+            user_id = reply.sender_id
+        elif target_user:
             try:
-                await msg.delete()
-                deleted += 1
-            except:
-                continue
-    await event.edit(f"✅ Deleted {deleted} media messages.")
-
-@client.on(events.NewMessage(pattern=r'\.delmidiauser(?:\s+(.+))?'))
-async def delete_user_media(event):
-    target_user = None
-    if event.is_reply:
-        reply = await event.get_reply_message()
-        target_user = reply.sender_id
-    elif event.pattern_match.group(1):
-        input_user = event.pattern_match.group(1)
-        try:
-            entity = await client.get_entity(input_user)
-            target_user = entity.id
-        except:
-            await event.edit("❌ Couldn't find user.")
-            return
+                if target_user.startswith('@'):
+                    user = await client.get_entity(target_user)
+                    user_id = user.id
+                else:
+                    user_id = int(target_user)
+            except Exception as e:
+                return await event.edit("⚠️ Invalid user ID or username.")
+        else:
+            return await event.edit("⚠️ Please reply to a user's message or provide their username/ID.")
     else:
-        await event.edit("ℹ️ Use with reply or give @username or ID.")
-        return
+        user_id = None
 
-    chat = await event.get_chat()
-    deleted = 0
-    await event.edit("🔍 Deleting media from selected user...")
+    deleted_count = 0
+    msgs_to_delete = []
 
-    async for msg in client.iter_messages(chat.id, from_user=target_user):
-        if msg.media and not msg.text:
-            try:
-                await msg.delete()
-                deleted += 1
-            except:
-                continue
-    await event.edit(f"✅ Deleted {deleted} media messages from that user.")
+    async for msg in client.iter_messages(event.chat_id, limit=500):
+        if user_id and msg.sender_id != user_id:
+            continue
+
+        if msg.media:
+            if isinstance(msg.media, MessageMediaPhoto):
+                msgs_to_delete.append(msg.id)
+            elif isinstance(msg.media, MessageMediaDocument):
+                # حذف: فيديو، GIF، ملف، ملصق، ڤويس، ڤيديو نوت
+                mime = msg.media.document.mime_type or ""
+                if any(m in mime for m in ["video", "gif", "audio", "image", "application"]):
+                    msgs_to_delete.append(msg.id)
+
+        # إذا وصلت الحد المسموح من حذف الدفعة
+        if len(msgs_to_delete) >= 100:
+            await client(DeleteMessagesRequest(id=msgs_to_delete, revoke=True))
+            deleted_count += len(msgs_to_delete)
+            msgs_to_delete = []
+
+    # حذف الباقي إذا اكو
+    if msgs_to_delete:
+        await client(DeleteMessagesRequest(id=msgs_to_delete, revoke=True))
+        deleted_count += len(msgs_to_delete)
+
+    await event.edit(f"✅ Deleted {deleted_count} media messages{' from that user' if user_id else ''}.")
 #تحميل تيك توك
 
 
