@@ -87,7 +87,7 @@ async def del_media_handler(event):
     target_user = event.pattern_match.group(1)
 
     if is_user_mode:
-        # تحديد المستخدم المطلوب
+        # استخراج المستخدم المستهدف
         if event.is_reply:
             reply = await event.get_reply_message()
             user_id = reply.sender_id
@@ -101,12 +101,12 @@ async def del_media_handler(event):
             except Exception as e:
                 return await event.edit("⚠️ Invalid user ID or username.")
         else:
-            return await event.edit("⚠️ Please reply to a user's message or provide their username/ID.")
+            return await event.edit("⚠️ Reply to user or provide username/id.")
     else:
         user_id = None
 
-    deleted_count = 0
-    msgs_to_delete = []
+    deleted = 0
+    batch = []
 
     async for msg in client.iter_messages(event.chat_id, limit=500):
         if user_id and msg.sender_id != user_id:
@@ -114,25 +114,28 @@ async def del_media_handler(event):
 
         if msg.media:
             if isinstance(msg.media, MessageMediaPhoto):
-                msgs_to_delete.append(msg.id)
+                batch.append(msg.id)
             elif isinstance(msg.media, MessageMediaDocument):
-                # حذف: فيديو، GIF، ملف، ملصق، ڤويس، ڤيديو نوت
                 mime = msg.media.document.mime_type or ""
                 if any(m in mime for m in ["video", "gif", "audio", "image", "application"]):
-                    msgs_to_delete.append(msg.id)
+                    batch.append(msg.id)
 
-        # إذا وصلت الحد المسموح من حذف الدفعة
-        if len(msgs_to_delete) >= 100:
-            await client(DeleteMessagesRequest(id=msgs_to_delete, revoke=True))
-            deleted_count += len(msgs_to_delete)
-            msgs_to_delete = []
+        if len(batch) >= 100:
+            try:
+                await client(DeleteMessagesRequest(id=batch, revoke=True))
+                deleted += len(batch)
+                batch = []
+            except Exception as e:
+                await event.respond(f"⚠️ Error while deleting batch: {str(e)}")
 
-    # حذف الباقي إذا اكو
-    if msgs_to_delete:
-        await client(DeleteMessagesRequest(id=msgs_to_delete, revoke=True))
-        deleted_count += len(msgs_to_delete)
+    if batch:
+        try:
+            await client(DeleteMessagesRequest(id=batch, revoke=True))
+            deleted += len(batch)
+        except Exception as e:
+            await event.respond(f"⚠️ Final delete error: {str(e)}")
 
-    await event.edit(f"✅ Deleted {deleted_count} media messages{' from that user' if user_id else ''}.")
+    await event.edit(f"✅ Deleted {deleted} media messages{' from that user' if user_id else ''}.")
 #تحميل تيك توك
 
 
