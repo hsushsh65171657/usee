@@ -78,16 +78,13 @@ async def stop_wkte(event):
 #حذف ميديا
 from telethon import events
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
-from telethon.tl.functions.messages import DeleteMessagesRequest
 
 @client.on(events.NewMessage(pattern=r'^\.delmidia(?:user)?(?:\s+(.*))?', outgoing=True))
 async def del_media_handler(event):
-    chat = await event.get_chat()
     is_user_mode = event.pattern_match.group(0).startswith('.delmidiauser')
     target_user = event.pattern_match.group(1)
 
     if is_user_mode:
-        # استخراج المستخدم المستهدف
         if event.is_reply:
             reply = await event.get_reply_message()
             user_id = reply.sender_id
@@ -98,10 +95,10 @@ async def del_media_handler(event):
                     user_id = user.id
                 else:
                     user_id = int(target_user)
-            except Exception as e:
-                return await event.edit("⚠️ Invalid user ID or username.")
+            except Exception:
+                return await event.edit("❌ Invalid username or ID.")
         else:
-            return await event.edit("⚠️ Reply to user or provide username/id.")
+            return await event.edit("⚠️ Please reply to a user's message or provide a valid username/ID.")
     else:
         user_id = None
 
@@ -117,25 +114,25 @@ async def del_media_handler(event):
                 batch.append(msg.id)
             elif isinstance(msg.media, MessageMediaDocument):
                 mime = msg.media.document.mime_type or ""
-                if any(m in mime for m in ["video", "gif", "audio", "image", "application"]):
+                if any(x in mime for x in ["video", "gif", "audio", "image", "application"]):
                     batch.append(msg.id)
 
         if len(batch) >= 100:
             try:
-                await client(DeleteMessagesRequest(id=batch, revoke=True))
+                await client.delete_messages(event.chat_id, batch)
                 deleted += len(batch)
                 batch = []
-            except Exception as e:
-                await event.respond(f"⚠️ Error while deleting batch: {str(e)}")
+            except:
+                continue
 
     if batch:
         try:
-            await client(DeleteMessagesRequest(id=batch, revoke=True))
+            await client.delete_messages(event.chat_id, batch)
             deleted += len(batch)
-        except Exception as e:
-            await event.respond(f"⚠️ Final delete error: {str(e)}")
+        except:
+            pass
 
-    await event.edit(f"✅ Deleted {deleted} media messages{' from that user' if user_id else ''}.")
+    await event.edit(f"✅ Deleted {deleted} media message(s){' from that user' if user_id else ''}.")
 #تحميل تيك توك
 
 
