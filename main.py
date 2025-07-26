@@ -357,20 +357,28 @@ async def count_my_messages(event):
 
 @client.on(events.NewMessage(pattern=r'\.get (https:\/\/t\.me\/[^\s]+\/\d+)', outgoing=True))
 async def _(event):
-    match = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', event.pattern_match.group(1))
-    if not match:
+    link = event.pattern_match.group(1)
+
+    match_public = re.match(r'https:\/\/t\.me\/([^\s\/]+)/(\d+)', link)
+    match_private = re.match(r'https:\/\/t\.me\/c/(\d+)\/(\d+)', link)
+
+    if not match_public and not match_private:
         return await event.edit("Invalid link format.")
 
-    channel_username = match.group(1)
-    msg_id = int(match.group(2))
+    if match_private:
+        # رابط قناة أو كروب خاص بصيغة t.me/c/xxxx/yyyy
+        channel_id = int(match_private.group(1))
+        msg_id = int(match_private.group(2))
+        chat_id = int(f"-100{channel_id}")
+        entity = PeerChannel(chat_id)
+    else:
+        # رابط قناة عامة
+        channel_username = match_public.group(1)
+        msg_id = int(match_public.group(2))
+        entity = await client.get_entity(channel_username)
 
     try:
         status_msg = await event.edit("Downloading media or content...")
-
-        # ✅ نحصل على الكيان سواء قناة خاصة أو عامة
-        entity = await client.get_entity(channel_username)
-
-        # ✅ نحصل على الرسالة من الكيان بدل اسم القناة فقط
         msg = await client.get_messages(entity, ids=msg_id)
         if not msg:
             return await status_msg.edit("Message not found.")
@@ -434,9 +442,8 @@ async def _(event):
 
             caption = extract_caption(msg)
             sender_info = await get_sender_info(msg)
-            message_link = f"https://t.me/{channel_username}/{msg.id}"
             final_caption = (
-                f"Media group from [@{channel_username}]({message_link})\n"
+                f"Media group from private chat\n"
                 f"Message ID: `{msg.id}`\n\n"
                 f"Caption:\n{caption}{sender_info}"
             )
@@ -475,9 +482,8 @@ async def _(event):
 
                 caption = extract_caption(m)
                 sender_info = await get_sender_info(m)
-                message_link = f"https://t.me/{channel_username}/{m.id}"
                 final_caption = (
-                    f"{media_type} from [@{channel_username}]({message_link})\n"
+                    f"{media_type} from private chat\n"
                     f"Message ID: `{m.id}`\n\n"
                     f"Caption:\n{caption}{sender_info}"
                 )
@@ -495,9 +501,8 @@ async def _(event):
 
         caption = extract_caption(msg)
         sender_info = await get_sender_info(msg)
-        message_link = f"https://t.me/{channel_username}/{msg.id}"
         final_text = (
-            f"Text from [@{channel_username}]({message_link})\n"
+            f"Text from private chat\n"
             f"Message ID: `{msg.id}`\n\n"
             f"Content:\n{caption}{sender_info}"
         )
