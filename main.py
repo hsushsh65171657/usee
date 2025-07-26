@@ -23,6 +23,7 @@ from telethon.tl.types import InputMediaPhoto
 from telethon.tl.types import MessageEntityCustomEmoji
 from telethon.tl.types import Channel, Chat, ChatAdminRights
 from telethon import functions
+from telethon.tl.types import PeerChannel
 
 #  كلاس خاص للماركداون
 class CustomMarkdown:
