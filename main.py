@@ -1,7 +1,8 @@
 import aiohttp
 import os
 import lyricsgenius
-import yt_dlp
+from pytube import YouTube
+from youtubesearchpython import VideosSearch
 import asyncio
 import re
 import random
@@ -875,28 +876,31 @@ async def lyrics_handler(event):
     except Exception as e:
         await event.edit(f"- Erorr:\n{str(e)}")
 #تحميل يوتيوب
+
 @client.on(events.NewMessage(pattern=r"\.youtube (.+)"))
 async def youtube_audio(event):
     query = event.pattern_match.group(1)
-    msg = await event.edit("- Loading...")
-
-    ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'outtmpl': 'HRBY (@s5llll).%(ext)s',
-        'noplaylist': True,
-        'quiet': True,
-        'default_search': 'ytsearch1',
-    }
+    msg = await event.edit("🔎 جاري البحث...")
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(query, download=True)
-            if 'entries' in info:
-                info = info['entries'][0]
-            filename = ydl.prepare_filename(info)
+        # 1. نبحث عن الفيديو
+        search = VideosSearch(query, limit=1)
+        result = search.result()
+        if not result['result']:
+            await msg.edit("❌ ما لقيت أي نتيجة.")
+            return
 
-        # تحميل صورة المصغرة
-        thumb_url = info.get('thumbnail')
+        video = result['result'][0]
+        video_url = video['link']
+        video_title = video['title']
+        thumb_url = video.get('thumbnails')[0]['url']
+
+        # 2. نحمل الفيديو
+        yt = YouTube(video_url)
+        audio_stream = yt.streams.filter(only_audio=True, file_extension='mp4').order_by('abr').desc().first()
+        filename = audio_stream.download(filename="youtube_audio.mp4")
+
+        # 3. نحمل الصورة المصغرة
         thumb_path = "thumb.jpg"
         if thumb_url:
             r = requests.get(thumb_url)
@@ -905,32 +909,29 @@ async def youtube_audio(event):
         else:
             thumb_path = None
 
-        # معرفة منو طلب التحميل
+        # 4. نرسل الملف
         sender = await event.get_sender()
         username = f"@{sender.username}" if sender.username else sender.first_name
+        caption = f"✅ تم التحميل بنجاح\n🎵 الاسم: {video_title}\n📎 بواسطة: {username}"
 
-        # نص الكابشن
-        caption = f"Downloaded successfully ✅\n🔴 Song name: {info['title']}\n🎖️By: {username}"
-
-        # إرسال الملف مع الصورة المصغرة
         await client.send_file(
             event.chat_id,
             filename,
             caption=caption,
-            thumb=thumb_path if os.path.exists(thumb_path) else None,
+            thumb=thumb_path if thumb_path and os.path.exists(thumb_path) else None,
             voice_note=False
         )
 
         await msg.delete()
 
-        # حذف الملفات المؤقتة
+        # 5. نحذف الملفات المؤقتة
         if os.path.exists(filename):
             os.remove(filename)
-        if os.path.exists(thumb_path):
+        if thumb_path and os.path.exists(thumb_path):
             os.remove(thumb_path)
 
     except Exception as e:
-        await msg.edit(f"- Error:\n`{str(e)}`")
+        await msg.edit(f"❌ صار خطأ:\n`{str(e)}`")
 #تحويل الصوره الى ستيكر
 from telethon import events
 from io import BytesIO
