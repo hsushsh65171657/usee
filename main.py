@@ -366,14 +366,19 @@ async def _(event):
 
     try:
         status_msg = await event.edit("Downloading media or content...")
-        msg = await client.get_messages(channel_username, ids=msg_id)
+
+        # ✅ نحصل على الكيان سواء قناة خاصة أو عامة
+        entity = await client.get_entity(channel_username)
+
+        # ✅ نحصل على الرسالة من الكيان بدل اسم القناة فقط
+        msg = await client.get_messages(entity, ids=msg_id)
         if not msg:
             return await status_msg.edit("Message not found.")
 
         messages = []
         if msg.grouped_id:
             messages = await client.get_messages(
-                channel_username,
+                entity,
                 ids=None,
                 min_id=msg_id - 20,
                 max_id=msg_id + 20
@@ -383,7 +388,6 @@ async def _(event):
         else:
             messages = [msg]
 
-        # 🧠 دالة استخراج الكابشن
         def extract_caption(m):
             raw_text = m.text or m.message
             if isinstance(raw_text, str):
@@ -392,7 +396,6 @@ async def _(event):
                 return raw_text[0].strip() if raw_text and isinstance(raw_text[0], str) and raw_text[0].strip() else "No caption"
             return "No caption"
 
-        # 🧠 دالة جلب معلومات المرسل
         async def get_sender_info(m):
             try:
                 if not m.sender_id:
@@ -408,7 +411,6 @@ async def _(event):
             except Exception:
                 return ""
 
-        # 📦 Media group
         if any(m.media for m in messages) and len(messages) > 1:
             files = []
             for m in messages:
@@ -450,7 +452,6 @@ async def _(event):
             )
             return await status_msg.delete()
 
-        # 🖼️ Single media
         for m in messages:
             if m.media:
                 file = BytesIO()
@@ -492,7 +493,6 @@ async def _(event):
                 )
                 return await status_msg.delete()
 
-        # 💬 Just text
         caption = extract_caption(msg)
         sender_info = await get_sender_info(msg)
         message_link = f"https://t.me/{channel_username}/{msg.id}"
